@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/gotoz/runq.svg?branch=master)](https://travis-ci.org/gotoz/runq)
+
 # runq
 
 runq is a hypervisor-based Docker runtime based on [runc](https://github.com/opencontainers/runc)

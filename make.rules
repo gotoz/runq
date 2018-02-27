@@ -1,0 +1,10 @@
+ifeq ($(strip $(GOPATH)),)
+$(error GOPATH not set)
+endif
+
+GO := go
+ARCH := $(shell uname -m)
+RUNQ_ROOT := /var/lib/runq
+QEMU_ROOT := $(RUNQ_ROOT)/qemu
+GIT_COMMIT := $(shell git describe --abbrev=7 --dirty --always)
+

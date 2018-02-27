@@ -1,0 +1,31 @@
+# Note:
+# The runc version must be specified in cmd/runq/Makefile
+
+ignored = [
+  "github.com/urfave/cli"
+]
+
+[[constraint]]
+  name = "github.com/opencontainers/runtime-spec"
+  version = "=1.0.0"
+
+[[constraint]]
+  name = "github.com/seccomp/libseccomp-golang"
+  revision = "84e90a91acea0f4e51e62bc1a75de18b1fc0790f"
+
+[[constraint]]
+  name = "github.com/syndtr/gocapability"
+  revision = "db04d3cc01c8b54962a58ec7e491717d06cfcc16"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/vishvananda/netlink"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/sys"
+

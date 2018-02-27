@@ -1,0 +1,3 @@
+#!/bin/sh
+echo running $0
+touch /mnt/SIGUSR1

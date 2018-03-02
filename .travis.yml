@@ -1,6 +1,7 @@
 language: go
 go:
     - "1.x"
+go_import_path: github.com/gotoz/runq
 dist: trusty
 sudo: false
 install:

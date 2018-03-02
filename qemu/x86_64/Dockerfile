@@ -28,15 +28,16 @@ RUN cp boot/vmlinuz-*-generic /qemu/kernel \
     && echo xfs  /lib/modules/*/kernel/lib/libcrc32c.ko            >> /qemu/kernel.conf \
     && echo xfs  /lib/modules/*/kernel/fs/xfs/xfs.ko               >> /qemu/kernel.conf
 
-RUN cd /qemu \
+RUN cd / \
     && tar -cf /qemu.tar \
-       /lib64 \
-       /lib/modules \
-       /lib/x86_64-linux-gnu \
-       /usr/bin/qemu-system-x86_64 \
-       /usr/lib/ipxe/qemu \
-       /usr/lib/x86_64-linux-gnu \
-       /usr/share/qemu \
-       /usr/share/seabios \
-       *
+       lib64 \
+       lib/modules \
+       lib/x86_64-linux-gnu \
+       usr/bin/qemu-system-x86_64 \
+       usr/lib/ipxe/qemu \
+       usr/lib/x86_64-linux-gnu \
+       usr/share/qemu \
+       usr/share/seabios \
+    && cd /qemu \
+    && tar -rf /qemu.tar *
 

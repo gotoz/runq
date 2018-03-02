@@ -34,12 +34,13 @@ RUN rm -f /lib/modules/*/build \
     && echo xfs  /lib/modules/*/kernel/lib/libcrc32c.ko            >> /qemu/kernel.conf \
     && echo xfs  /lib/modules/*/kernel/fs/xfs/xfs.ko               >> /qemu/kernel.conf
 
-RUN cd /qemu \
+RUN cd / \
     && tar -cf /qemu.tar \
-       /lib/modules \
-       /lib/s390x-linux-gnu \
-       /usr/bin/qemu-system-s390x \
-       /usr/lib/s390x-linux-gnu \
-       /usr/share/qemu \
-       *
+       lib/modules \
+       lib/s390x-linux-gnu \
+       usr/bin/qemu-system-s390x \
+       usr/lib/s390x-linux-gnu \
+       usr/share/qemu \
+    && cd /qemu \
+    && tar -rf /qemu.tar *
 

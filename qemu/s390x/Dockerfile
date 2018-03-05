@@ -18,8 +18,6 @@ RUN mkdir -p \
     /qemu/rootfs \
     /qemu/sys
 
-RUN cd /qemu && ln -s s390x-linux-gnu/ld-2.26.so lib/ld64.so.1
-
 ADD extract-vmlinux.sh /extract-vmlinux.sh
 
 RUN /extract-vmlinux.sh boot/vmlinuz-*-generic /qemu/kernel
@@ -36,6 +34,7 @@ RUN rm -f /lib/modules/*/build \
 
 RUN cd / \
     && tar -cf /qemu.tar \
+       lib/ld64.so.1 \
        lib/modules \
        lib/s390x-linux-gnu \
        usr/bin/qemu-system-s390x \

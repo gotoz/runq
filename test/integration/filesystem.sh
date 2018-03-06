@@ -13,14 +13,16 @@ cleanup() {
 trap "cleanup; myexit" 0 2 15
 
 for fs in ext2 ext3 ext4 xfs; do
-
-    dd if=/dev/zero of=$dev bs=1M count=100 >/dev/null
-
-    if [ "${fs:0:3}" = "ext" ]; then
-        mkfs.$fs -F $dev
-    else
-        mkfs.$fs -f $dev
-    fi
+    rm -f $dev
+    case "${fs:0:3}" in
+        ext)
+            dd if=/dev/zero of=$dev bs=1M count=100 >/dev/null
+            mkfs.$fs -F $dev
+            ;;
+        xfs)
+            mkfs.xfs -dfile,name=$dev,size=100m
+            ;;
+    esac
 
     comment="mount $fs"
     cmd="df -T | awk '/\/dev\/vda/{ print \$2 }' | grep -w $fs"

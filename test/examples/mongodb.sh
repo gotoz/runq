@@ -12,8 +12,7 @@ esac
 
 name=$(rand_name)
 disk=/tmp/disk$$
-dd if=/dev/zero of=$disk bs=1M count=200 >/dev/null
-mkfs.xfs $disk
+mkfs.xfs -dfile,name=$disk,size=200m
 
 cleanup() {
     echo cleanup

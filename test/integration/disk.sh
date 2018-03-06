@@ -42,11 +42,9 @@ qemu-img create -f qcow2 $qcow2 100m >/dev/null
 qemu-nbd -d $dev1
 qemu-nbd -c $dev1 $qcow1
 
-dd if=/dev/zero of=$dev3 bs=1M count=100 >/dev/null
-
 mkfs.ext2 -F $dev1
 mkfs.ext4 -F $dev2
-mkfs.xfs $dev3
+mkfs.xfs -dfile,name=$dev3,size=100m
 
 qemu-nbd -d $dev1
 

@@ -37,49 +37,43 @@ Key differences to other hypervisor-based runtimes:
 
 ## Installation
 
-1. Prerequisites to build runq:
-* Docker >= 17.09.x-ce
-* Go >= 1.9
-* GOPATH must be set
-* `/var/lib/runq` must be writable by the current user
-* [Libseccomp](https://github.com/seccomp/libseccomp/) static library.
-E.g. `libseccomp-dev` for Ubuntu or `libseccomp-static` for Fedora
+The easiest way to build runq and to put all dependencies together is using Docker.
+For fast development cycles a regular build environment might be more
+efficient. For this refer to section *Developing runq* below.
 
-2. Download the runc and runq source code
-    ```
-    go get -d -u github.com/opencontainers/runc
-    go get -d -u github.com/gotoz/runq
-    ```
-3. Install Qemu and guest kernel to `/var/lib/runq/qemu`<br>
-All files are taken from the Ubuntu 18.04 LTS Docker base image.
-    ```
-    cd $GOPATH/src/github.com/gotoz/runq
-    make -C qemu
-    ```
-4. Compile and install runq components to `/var/lib/runq`
-    ```
-    make install
-    sudo chown -R root:root /var/lib/runq
-    ```
-5. Register runq as Docker runtime with appropriate defaults<br>
-See [daemon.json](test/testdata/daemon.json) for more options.
-    ```
-    /etc/docker/daemon.json
-    {
-      "runtimes": {
-        "runq": {
-          "path": "/var/lib/runq/runq",
-          "runtimeArgs": [
-            "--cpu", "1",
-            "--mem", "256",
-            "--dns", "8.8.8.8,8.8.4.4"
-          ]
-        }
-      }
+```
+# get the source
+git clone https://github.com/gotoz/runq.git
+cd runq
+
+# compile and create a release tar file in Docker container
+make release
+
+# install runq to `/var/lib/runq`
+make release-install
+```
+
+Register runq as Docker runtime with appropriate defaults. See [daemon.json](test/testdata/daemon.json) for more options.
+```
+/etc/docker/daemon.json
+{
+  "runtimes": {
+    "runq": {
+      "path": "/var/lib/runq/runq",
+      "runtimeArgs": [
+        "--cpu", "1",
+        "--mem", "256",
+        "--dns", "8.8.8.8,8.8.4.4"
+      ]
     }
+  }
+}
+```
 
-    systemctl reload docker.service
-    ```
+reload Docker config
+```
+systemctl reload docker.service
+```
 Note: To deploy runq on further Docker hosts only `/var/lib/runq` and `/etc/docker/daemon.json`
 must be copied.
 
@@ -338,11 +332,37 @@ The following common options of `docker run` are supported:
 --mount                     --workdir
 ```
 
+## Developing runq
+For fast development cycles runq can be build on the host as follows:
+1. Prerequisites:
+* Docker >= 17.09.x-ce
+* Go >= 1.9
+* GOPATH must be set
+* `/var/lib/runq` must be writable by the current user
+* [Libseccomp](https://github.com/seccomp/libseccomp/) static library.
+E.g. `libseccomp-dev` for Ubuntu or `libseccomp-static` for Fedora
+
+2. Download runc and runq source code
+    ```
+    go get -d -u github.com/opencontainers/runc
+    go get -d -u github.com/gotoz/runq
+    ```
+3. Install Qemu and guest kernel to `/var/lib/runq/qemu`<br>
+All files are taken from the Ubuntu 18.04 LTS Docker base image.
+    ```
+    cd $GOPATH/src/github.com/gotoz/runq
+    make -C qemu
+    ```
+4. Compile and install runq components to `/var/lib/runq`
+    ```
+    make install
+    sudo chown -R root:root /var/lib/runq
+    ```
+5. Register runq as Docker runtime with appropriate defaults as shown in section *Installation* above.
+
 ## Contributing
 See [CONTRIBUTING](CONTRIBUTING.md) for details.
 
 ## License
-The code is licensed under the Apache License 2.0.
-
+The code is licensed under the Apache License 2.0.<br>
 See [LICENSE](LICENSE) for further details.
-

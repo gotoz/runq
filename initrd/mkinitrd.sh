@@ -3,9 +3,7 @@ DIR=$(cd ${0%/*};pwd;)
 set -u
 set -e
 
-TMP_DIR=$DIR/tmp
-rm -rf $TMP_DIR
-mkdir $TMP_DIR
+TMP_DIR=$(mktemp -d)
 
 pushd $QEMU_ROOT >/dev/null
 while read x f; do
@@ -22,3 +20,4 @@ pushd $TMP_DIR >/dev/null
 find . | cpio -o -H newc | gzip > $DIR/initrd
 popd >/dev/null
 
+rm -rf $TMP_DIR

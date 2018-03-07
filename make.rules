@@ -1,7 +1,3 @@
-ifeq ($(strip $(GOPATH)),)
-$(error GOPATH not set)
-endif
-
 GO := go
 ARCH := $(shell uname -m)
 RUNQ_ROOT := /var/lib/runq

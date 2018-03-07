@@ -1,45 +1,58 @@
 FROM ubuntu:18.04
 
-RUN echo "do_initrd = no" >> /etc/kernel-img.conf
+ENV DEBIAN_FRONTEND noninteractive
+ENV GOPATH /go
+ENV QEMU_ROOT /var/lib/runq/qemu
 
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get upgrade \
+WORKDIR /go/src/github.com/gotoz/runq
+
+RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
+    && apt-get update \
+    && apt-get upgrade \
         --yes \
-    && DEBIAN_FRONTEND=noninteractive apt-get install \
-       --yes \
-       --no-install-recommends \
-       --no-install-suggests \
-       qemu-kvm linux-virtual tar xz-utils
+    && apt-get install \
+        --yes \
+        --no-install-recommends \
+        --no-install-suggests \
+        build-essential \
+        ca-certificates \
+        cpio \
+        git \
+        golang \
+        libseccomp-dev \
+        linux-virtual \
+        pkg-config \
+        qemu-kvm \
+        xz-utils
+
+RUN go get -d github.com/opencontainers/runc
 
 RUN mkdir -p \
-    /qemu/dev \
-    /qemu/lib \
-    /qemu/proc \
-    /qemu/rootfs \
-    /qemu/sys
-
-ADD extract-vmlinux.sh /extract-vmlinux.sh
-
-RUN /extract-vmlinux.sh boot/vmlinuz-*-generic /qemu/kernel
+    $QEMU_ROOT/dev \
+    $QEMU_ROOT/proc \
+    $QEMU_ROOT/lib \
+    $QEMU_ROOT/rootfs \
+    $QEMU_ROOT/sys
 
 RUN rm -f /lib/modules/*/build \
-    && echo base /lib/modules/*/kernel/fs/fscache/fscache.ko        > /qemu/kernel.conf \
-    && echo base /lib/modules/*/kernel/net/9p/9pnet.ko             >> /qemu/kernel.conf \
-    && echo base /lib/modules/*/kernel/net/9p/9pnet_virtio.ko      >> /qemu/kernel.conf \
-    && echo base /lib/modules/*/kernel/fs/9p/9p.ko                 >> /qemu/kernel.conf \
-    && echo base /lib/modules/*/kernel/drivers/block/virtio_blk.ko >> /qemu/kernel.conf \
-    && echo base /lib/modules/*/kernel/drivers/net/virtio_net.ko   >> /qemu/kernel.conf \
-    && echo xfs  /lib/modules/*/kernel/lib/libcrc32c.ko            >> /qemu/kernel.conf \
-    && echo xfs  /lib/modules/*/kernel/fs/xfs/xfs.ko               >> /qemu/kernel.conf
+    && echo base /lib/modules/*/kernel/fs/fscache/fscache.ko        > $QEMU_ROOT/kernel.conf \
+    && echo base /lib/modules/*/kernel/net/9p/9pnet.ko             >> $QEMU_ROOT/kernel.conf \
+    && echo base /lib/modules/*/kernel/net/9p/9pnet_virtio.ko      >> $QEMU_ROOT/kernel.conf \
+    && echo base /lib/modules/*/kernel/fs/9p/9p.ko                 >> $QEMU_ROOT/kernel.conf \
+    && echo base /lib/modules/*/kernel/drivers/block/virtio_blk.ko >> $QEMU_ROOT/kernel.conf \
+    && echo base /lib/modules/*/kernel/drivers/net/virtio_net.ko   >> $QEMU_ROOT/kernel.conf \
+    && echo xfs  /lib/modules/*/kernel/lib/libcrc32c.ko            >> $QEMU_ROOT/kernel.conf \
+    && echo xfs  /lib/modules/*/kernel/fs/xfs/xfs.ko               >> $QEMU_ROOT/kernel.conf
 
-RUN cd / \
-    && tar -cf /qemu.tar \
-       lib/ld64.so.1 \
-       lib/modules \
-       lib/s390x-linux-gnu \
-       usr/bin/qemu-system-s390x \
-       usr/lib/s390x-linux-gnu \
-       usr/share/qemu \
-    && cd /qemu \
-    && tar -rf /qemu.tar *
+ADD extract-vmlinux.sh /extract-vmlinux.sh
+RUN /extract-vmlinux.sh /boot/vmlinuz-*-generic $QEMU_ROOT/kernel
+
+RUN cp -a --parents \
+    /lib/ld64.so.1 \
+    /lib/modules \
+    /lib/s390x-linux-gnu \
+    /usr/bin/qemu-system-s390x \
+    /usr/lib/s390x-linux-gnu \
+    /usr/share/qemu \
+    $QEMU_ROOT
 

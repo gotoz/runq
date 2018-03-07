@@ -9,4 +9,4 @@ install: initrd
 	install -m 0644 -D initrd $(QEMU_ROOT)/initrd
 
 clean:
-	rm -rf initrd tmp
+	rm -rf initrd

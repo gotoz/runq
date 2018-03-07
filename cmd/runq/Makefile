@@ -5,6 +5,7 @@ RUNC_PATH := $(GOPATH)/src/github.com/opencontainers/runc
 EXTRA_LDFLAGS := "-X main.runqCommit=$(GIT_COMMIT)"
 
 runq: $(RUNC_PATH)/.git $(shell find . -type f ! -name runq)
+	@echo check GOPATH; test -n "$(GOPATH)"
 	cd $(RUNC_PATH) && git reset --hard -q
 	cd $(RUNC_PATH) && git clean -xfdq
 	cd $(RUNC_PATH) && git reset --hard -q $(RUNC_COMMIT) || { git pull; git reset --hard -q $(RUNC_COMMIT); }
@@ -14,6 +15,7 @@ runq: $(RUNC_PATH)/.git $(shell find . -type f ! -name runq)
 	cp -f $(RUNC_PATH)/runc $(CURDIR)/runq
 
 $(RUNC_PATH)/.git:
+	@echo check GOPATH; test -n "$(GOPATH)"
 	@echo Error: RunC source not found
 	@echo To download RunC source: '"go get -d github.com/opencontainers/runc"'; false
 
@@ -22,4 +24,4 @@ install: runq
 
 clean:
 	$(MAKE) -C $(RUNC_PATH) clean
-	$(GO) clean
+	rm -f runq

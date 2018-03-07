@@ -68,8 +68,19 @@ func setupNetwork() ([]vm.Network, error) {
 			},
 		}
 
-		if err = netlink.LinkAdd(mvt); err != nil {
-			return nil, errors.Wrap(err, "failed to add macvtap device")
+		// On old kernels (<= 4.4) adding a Macvtap device to an interface
+		// inside a network namespace can fail with "file exists".
+		// Details and the required patch to fix this issue can be found here:
+		// https://github.com/torvalds/linux/commit/17af2bce88d31e65ed73d638bb752d2e13c66ced
+		// The work-around is to retry.
+		for i := 0; i < 10000; i++ {
+			err := netlink.LinkAdd(mvt)
+			if err == nil || !os.IsExist(err) {
+				break
+			}
+		}
+		if err != nil {
+			return networks, errors.Wrap(err, "failed to add macvtap device")
 		}
 
 		macvtap, err := netlink.LinkByName(mvtAttrs.Name)

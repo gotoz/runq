@@ -7,11 +7,12 @@ if [ $UID -ne 0 ]; then
 fi
 
 if [ ! -x /usr/bin/qemu-img ]; then
-    checkrc 1 0 "/usr/bin/qemu-img exists"
+    checkrc 1 0 "/usr/bin/qemu-img not found - skipped"
     exit 1
 fi
 
-set -u
+modprobe brd &>/dev/null
+modprobe nbd &>/dev/null
 
 dev1=/dev/nbd0
 dev2=/dev/ram0
@@ -24,6 +25,18 @@ mnt1=/a/b/c
 mnt2=/c
 mnt3=/d
 
+if [ ! -e $dev1 ]; then
+    checkrc 1 0 "$dev1 not found - skipped"
+    exit 1
+fi
+
+if ! [ -e $dev2 ]; then
+    checkrc 1 0 "$dev2 not found - skipped"
+    exit 1
+fi
+
+set -u
+
 cleanup() {
     qemu-nbd -d $dev1
     rm -f $qcow1
@@ -33,8 +46,6 @@ cleanup() {
 }
 trap "cleanup; myexit" 0 2 15
 
-modprobe nbd
-modprobe brd
 
 qemu-img create -f qcow2 $qcow1 100m >/dev/null
 qemu-img create -f qcow2 $qcow2 100m >/dev/null

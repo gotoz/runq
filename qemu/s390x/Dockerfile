@@ -8,12 +8,7 @@ WORKDIR /go/src/github.com/gotoz/runq
 
 RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
     && apt-get update \
-    && apt-get upgrade \
-        --yes \
-    && apt-get install \
-        --yes \
-        --no-install-recommends \
-        --no-install-suggests \
+    && apt-get install -y --no-install-recommends \
         build-essential \
         ca-certificates \
         cpio \

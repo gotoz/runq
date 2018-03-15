@@ -1,15 +1,9 @@
 #!/bin/bash
 . $(cd ${0%/*};pwd;)/../common.sh
 
-if [ $UID -ne 0 ]; then
-    checkrc 1 0 "not root - skipped"
-    exit 1
-fi
-
-if [ ! -x /usr/bin/qemu-img ]; then
-    checkrc 1 0 "/usr/bin/qemu-img not found - skipped"
-    exit 1
-fi
+test $UID -eq 0 || skip "reason: not running as root"
+command -v qemu-img || skip "reason: qemu-img not found"
+command -v qemu-nbd || skip "reason: qemu-nbd not found"
 
 modprobe brd &>/dev/null
 modprobe nbd &>/dev/null
@@ -25,15 +19,8 @@ mnt1=/a/b/c
 mnt2=/c
 mnt3=/d
 
-if [ ! -e $dev1 ]; then
-    checkrc 1 0 "$dev1 not found - skipped"
-    exit 1
-fi
-
-if ! [ -e $dev2 ]; then
-    checkrc 1 0 "$dev2 not found - skipped"
-    exit 1
-fi
+test -e $dev1 || skip "reason: $dev1 not available"
+test -e $dev2 || skip "reason: $dev2 not available"
 
 set -u
 

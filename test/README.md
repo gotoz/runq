@@ -1,11 +1,11 @@
-# RunQ Integration Tests
+# RunQ Tests
 
 Some tests require a custom configuration file ([daemon.json](testdata/daemon.json))
 and custom sigusr commands.
 
 To install sigusr commands:
 ```
-make -C testdata install
+make -C test install
 ```
 
 To run all tests:

@@ -2,7 +2,7 @@
 . $(cd ${0%/*};pwd;)/../common.sh
 
 n=10
-timeout=20
+timeout=30
 ports=()
 names=()
 
@@ -24,14 +24,14 @@ for ((i=0; i<n; i++)); do
 done
 wait
 
-sleep 5
+sleep $n
 
 rc=0
 for p in "${ports[@]}"; do
-    test "$(curl -m $timeout -s localhost:$p)" = "$p"
+    test "$(curl -m $timeout -sS localhost:$p)" = "$p"
     rc=$(($? + rc))
     echo checked localhost:$p $rc
-    sleep .1
+    sleep .5
 done
 
 

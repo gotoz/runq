@@ -31,6 +31,13 @@ checkrc() {
     printf "test %-9s: %-19s : %s\n" $result $filename "$comment"
 }
 
+skip() {
+    local filename="$(basename $0)"
+    local comment="$1"
+    printf "test skipped  : %-19s : %s\n" $filename "$comment"
+    exit 0
+}
+
 myexit() {
     echo rc_exit=$rc_exit
     exit $rc_exit

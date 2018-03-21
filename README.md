@@ -283,6 +283,14 @@ Seccomp can be disabled at container start:
 docker run --security-opt seccomp=unconfined ...
 ```
 
+Note: Some Docker daemon don't support custom Seccomp profiles. Run `docker info` to verify
+that Seccomp is supported by your daemon. If it is supported the output of `docker info` looks like this:
+```
+Security Options:
+ seccomp
+  Profile: default
+```
+
 ## SIGUSR1 and SIGUSR2
 When sigusr is enabled the directory `/var/lib/runq/qemu/.runq`
 will be bind-mounted into the container VM under /.runq (read-only).

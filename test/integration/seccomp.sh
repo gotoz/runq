@@ -4,6 +4,10 @@ DIR=$(cd ${0%/*};pwd;)
 
 runtime="${1:-runq}"
 
+if ! docker info --format '{{json .SecurityOptions}}'| grep -q 'name=seccomp'; then
+    skip "reason: Docker daemon does not support seccomp profiles"
+fi
+
 default_profile=$DIR/../testdata/seccomp.json
 custom_profile=`mktemp`
 cleanup() {

@@ -22,5 +22,5 @@ install: runq
 	install -m 0755 -D $(CURDIR)/runq $(RUNQ_ROOT)/runq
 
 clean:
-	$(MAKE) -C $(RUNC_PATH) clean
+	cd $(RUNC_PATH) && git clean -xfd && git reset --hard && git checkout master
 	rm -f runq

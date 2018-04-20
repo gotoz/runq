@@ -9,7 +9,7 @@ cleanup() {
 }
 trap "cleanup; myexit" 0 2 15
 
-comment="insmod is forbidden without extra caps"
+comment="insmod is forbidden by default"
 docker run \
     --runtime runq \
     --name $(rand_name) \
@@ -23,7 +23,7 @@ checkrc $? 1 "$comment"
 #
 #
 #
-comment="insmod is allowd via extra cap 'sys_module'"
+comment="insmod is allowed by '--cap-add sys_module'"
 docker run \
     --runtime runq \
     --name $(rand_name) \
@@ -38,6 +38,35 @@ checkrc $? 0 "$comment"
 #
 #
 #
+comment="mknod is allowed by default"
+docker run \
+    --runtime runq \
+    --name $(rand_name) \
+    --rm \
+    -e RUNQ_CPU=2 \
+    $image \
+        sh -c "mknod -m 0600 /loop0 b 7 0"
+
+checkrc $? 0 "$comment"
+
+#
+#
+#
+comment="mknod is forbidden by '--cap-drop mknod'"
+docker run \
+    --runtime runq \
+    --name $(rand_name) \
+    --rm \
+    --cap-drop mknod \
+    -e RUNQ_CPU=2 \
+    $image \
+        sh -c "mknod -m 0600 /loop0 b 7 0"
+
+checkrc $? 1 "$comment"
+
+#
+#
+#
 comment="capture capabilities from runc"
 docker run \
     --runtime runc \
@@ -45,7 +74,7 @@ docker run \
     --rm \
     -e RUNQ_CPU=2 \
     -v $tmpfileA:/results \
-    --cap-add sys_time \
+    --cap-drop sys_time \
     --cap-add sys_admin \
     $image \
     sh -c 'grep ^Cap /proc/$$/status >/results'
@@ -54,7 +83,6 @@ checkrc $? 0 "$comment"
 
 #
 #
-# Note: sys_time is already defined in /etc/docker/daemon.json
 comment="capture capabilities from runq"
 docker run \
     --runtime runq \
@@ -62,7 +90,7 @@ docker run \
     --rm \
     -e RUNQ_CPU=2 \
     -v $tmpfileB:/results \
-    --cap-add sys_time \
+    --cap-drop sys_time \
     --cap-add sys_admin \
     $image \
     sh -c 'grep ^Cap /proc/$$/status >/results'

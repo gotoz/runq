@@ -37,19 +37,20 @@ func listToCap(list []string) ([]capability.Cap, error) {
 }
 
 func dropCapabilities(vmcaps vm.AppCapabilities) error {
-	const allCapTypes = capability.CAPS | capability.BOUNDS
+	var minCaps = []string{"CAP_SETGID", "CAP_SETUID", "CAP_SYS_ADMIN"}
 
 	p, err := capability.NewPid(0)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	p.Clear(allCapTypes)
+
+	p.Clear(capability.CAPS | capability.BOUNDS)
 
 	for capType, list := range map[capability.CapType][]string{
+		capability.EFFECTIVE:   minCaps,
+		capability.PERMITTED:   minCaps,
 		capability.BOUNDS:      vmcaps.Bounding,
-		capability.EFFECTIVE:   vmcaps.Effective,
 		capability.INHERITABLE: vmcaps.Inheritable,
-		capability.PERMITTED:   vmcaps.Permitted,
 	} {
 		caps, err := listToCap(list)
 		if err != nil {
@@ -58,6 +59,6 @@ func dropCapabilities(vmcaps vm.AppCapabilities) error {
 		p.Set(capType, caps...)
 	}
 
-	err = p.Apply(allCapTypes)
+	err = p.Apply(capability.CAPS | capability.BOUNDS)
 	return errors.WithStack(err)
 }

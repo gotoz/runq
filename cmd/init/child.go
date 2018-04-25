@@ -61,7 +61,17 @@ func runChild() error {
 		return err
 	}
 
-	if err := setSyscallLimits(process.NoNewPrivileges, process.Capabilities, process.SeccompGob); err != nil {
+	if process.NoNewPrivileges {
+		if err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
+	if err := dropCapabilities(process.Capabilities); err != nil {
+		return err
+	}
+
+	if err := initSeccomp(process.SeccompGob); err != nil {
 		return err
 	}
 
@@ -122,47 +132,6 @@ func setRlimits(limits map[string]vm.Rlimit) error {
 		}
 	}
 	return nil
-}
-
-func setSyscallLimits(noNewPrivileges bool, caps vm.AppCapabilities, sec []byte) error {
-	if noNewPrivileges {
-		if err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	// seccomp(2):
-	// In order to use the SECCOMP_SET_MODE_FILTER operation, either the caller must
-	// have the CAP_SYS_ADMIN capability in its user namespace, or the thread must
-	// already have the no_new_privs bit set.
-	//
-	// With noNewPrivileges = true or with CAP_SYS_ADMIN capability we can apply the
-	// seccomp filter as late as posible after droping capabilities.
-	// Otherwise we must apply seccomp filter befor dropping capabilities.
-	if noNewPrivileges || hasSysadminCap(caps) {
-		if err := dropCapabilities(caps); err != nil {
-			return err
-		}
-		if err := initSeccomp(sec); err != nil {
-			return err
-		}
-	} else {
-		if err := initSeccomp(sec); err != nil {
-			return err
-		}
-		if err := dropCapabilities(caps); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func hasSysadminCap(caps vm.AppCapabilities) bool {
-	for _, v := range caps.Effective {
-		if v == "CAP_SYS_ADMIN" {
-			return true
-		}
-	}
-	return false
 }
 
 func setPATH(env []string) error {

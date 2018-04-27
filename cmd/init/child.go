@@ -87,19 +87,14 @@ func runChild() error {
 	if process.Terminal {
 		cmd.Stdin = os.Stdin
 	}
-	// Define process attributes only if needed.
-	// This allows dropping of all caps: --cap-drop ALL --user 0:0
-	// Setting Credentials requires CAP_SETGID
-	if process.UID != 0 || process.GID != 0 || len(process.AdditionalGids) > 0 || process.Terminal {
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Setctty: process.Terminal,
-			Setsid:  true,
-			Credential: &syscall.Credential{
-				Uid:    process.UID,
-				Gid:    process.GID,
-				Groups: process.AdditionalGids,
-			},
-		}
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setctty: process.Terminal,
+		Setsid:  true,
+		Credential: &syscall.Credential{
+			Uid:    process.UID,
+			Gid:    process.GID,
+			Groups: process.AdditionalGids,
+		},
 	}
 
 	if err := cmd.Start(); err != nil {

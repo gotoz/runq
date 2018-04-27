@@ -67,6 +67,21 @@ checkrc $? 1 "$comment"
 #
 #
 #
+comment="drop all capabilities"
+docker run \
+    --runtime runq \
+    --name $(rand_name) \
+    --rm \
+    --cap-drop all \
+    -e RUNQ_CPU=2 \
+    $image \
+        sh -c "grep -c '^Cap.*0000000000000000' /proc/self/status | xargs test 5 -eq "
+
+checkrc $? 0 "$comment"
+
+#
+#
+#
 comment="capture capabilities from runc"
 docker run \
     --runtime runc \

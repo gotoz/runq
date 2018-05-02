@@ -21,6 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/sys/unix"
 )
 
@@ -89,6 +90,12 @@ func runInit() error {
 	// Ensure runq and init are build from same commit.
 	if gitCommit == "" || vmdata.GitCommit == "" || vmdata.GitCommit != gitCommit {
 		shutdown(1, fmt.Sprintf("binary missmatch proxy:%q init:%q", vmdata.GitCommit, gitCommit))
+	}
+
+	if !vmdata.Terminal {
+		if _, err := terminal.MakeRaw(0); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
 	if err := mountRootfs(vmdata.Mounts); err != nil {

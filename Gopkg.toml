@@ -29,3 +29,7 @@ ignored = [
   branch = "master"
   name = "golang.org/x/sys"
 
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/crypto"

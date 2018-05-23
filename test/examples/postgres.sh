@@ -27,7 +27,7 @@ docker run \
     -d \
     $image
 
-sleep 10
+sleep 30
 
 comment="Postgres"
 

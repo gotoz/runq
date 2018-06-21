@@ -5,6 +5,7 @@ local_image=runq-test-nonewprivs
 build_dir=$(mktemp -d)
 cleanup() {
     rm -rf $build_dir
+    docker rmi $local_image
 }
 trap "cleanup; myexit" 0 2 15
 

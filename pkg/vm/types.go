@@ -104,6 +104,7 @@ type Linux struct {
 	Hostname    string
 	Mem         int
 	Mounts      []Mount
+	NestedVM    bool
 	Networks    []Network
 	Sigusr      bool
 	Sysctl      map[string]string

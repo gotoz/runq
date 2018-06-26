@@ -308,6 +308,7 @@ Note: The default behavior of a process receiving SIGUSR1 or SIGUSR2 is to termi
 ```
 docker kill --signal SIGUSR1 <container ID>
 ```
+
 ## Limitations
 Most docker commands and options work as expected. However, due to
 the fact that the target application runs inside a Qemu VM which itself runs
@@ -339,6 +340,13 @@ The following common options of `docker run` are supported:
 --link                      --volumes-from
 --mount                     --workdir
 ```
+
+### Nested VM
+A nested VM is a virtual machine that runs inside of a virtual machine. In plain KVM this feature is
+considered working but not meant for production use. Running KVM guests inside guests of other
+hypervisors such as VMware might not work as expected or might not work at all.
+However to try out runq in a VM guest the (experimental) runq runtime configuration parameter
+`--nestedvm` can be used. It modifies the parameters of the Qemu process.
 
 ## Developing runq
 For fast development cycles runq can be build on the host as follows:

@@ -80,6 +80,7 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 		DNSSearch:   strings.TrimSpace(context.GlobalString("dns-search")),
 		GitCommit:   runqCommit,
 		Mem:         context.GlobalInt("mem"),
+		NestedVM:    context.GlobalBool("nestedvm"),
 		Sigusr:      context.GlobalBool("sigusr"),
 		Sysctl:      spec.Linux.Sysctl,
 	}

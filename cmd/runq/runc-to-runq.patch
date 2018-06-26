@@ -1,8 +1,8 @@
 diff --git a/main.go b/main.go
-index 4642335e..e52c3d22 100644
+index 4642335e..b77f3742 100644
 --- a/main.go
 +++ b/main.go
-@@ -99,6 +99,35 @@ func main() {
+@@ -99,6 +99,39 @@ func main() {
  			Name:  "systemd-cgroup",
  			Usage: "enable systemd cgroup support, expects cgroupsPath to be of form \"slice:prefix:name\" for e.g. \"system.slice:runc:434234\"",
  		},
@@ -34,6 +34,10 @@ index 4642335e..e52c3d22 100644
 +		cli.BoolFlag{
 +			Name:  "sigusr",
 +			Usage: "enable sigusr commands",
++		},
++		cli.BoolFlag{
++			Name:  "nestedvm",
++			Usage: "enable support for nested VMs",
 +		},
  	}
  	app.Commands = []cli.Command{

@@ -15,6 +15,11 @@ import (
 )
 
 func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
+	var cpuArgs, virtioArgs string
+	if vmdata.NestedVM {
+		cpuArgs += ",pmu=off"
+		virtioArgs = ",disable-modern=true"
+	}
 
 	commonArgs := []string{
 		"-machine", "accel=kvm,usb=off",
@@ -22,7 +27,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		"-nodefaults",
 		"-name", vmdata.ContainerID,
 		"-enable-kvm",
-		"-cpu", "host",
+		"-cpu", "host" + cpuArgs,
 		"-nographic",
 		"-no-reboot",
 		"-no-user-config",
@@ -31,7 +36,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		"-initrd", "/initrd",
 		"-msg", "timestamp=on",
 		"-fsdev", "local,id=rootfs_dev,path=/rootfs,security_model=none",
-		"-device", "virtio-serial",
+		"-device", "virtio-serial" + virtioArgs,
 		"-chardev", "socket,path=" + socket + ",id=channel1",
 		"-device", "virtserialport,chardev=channel1,name=com.ibm.runq.channel.1",
 		"-smp", strconv.Itoa(vmdata.CPU),
@@ -42,7 +47,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 	customArgs := map[string][]string{
 		"amd64": {
 			"/usr/bin/qemu-system-x86_64",
-			"-device", "virtio-9p-pci,fsdev=rootfs_dev,mount_tag=rootfs",
+			"-device", "virtio-9p-pci,fsdev=rootfs_dev,mount_tag=rootfs" + virtioArgs,
 			"-chardev", "stdio,id=console,signal=off",
 			"-serial", "chardev:console",
 			"-no-acpi",
@@ -87,7 +92,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 
 		id := fmt.Sprintf("disk%d", i)
 		drive := fmt.Sprintf("file=%s,if=none,format=%s,cache=%s,id=%s", d.Path, format, d.Cache, id)
-		device := fmt.Sprintf("virtio-blk-%s,serial=%s,drive=%s,write-cache=%s", bus[arch], d.Serial, id, writeCache)
+		device := fmt.Sprintf("virtio-blk-%s,serial=%s,drive=%s,write-cache=%s%s", bus[arch], d.Serial, id, writeCache, virtioArgs)
 		args = append(args, "-drive", drive)
 		args = append(args, "-device", device)
 	}
@@ -109,7 +114,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		extraFiles = append(extraFiles, f)
 
 		args = append(args,
-			"-device", fmt.Sprintf("virtio-net-%s,netdev=net%d,mac=%s", bus[arch], i, nw.MacAddress),
+			"-device", fmt.Sprintf("virtio-net-%s,netdev=net%d,mac=%s%s", bus[arch], i, nw.MacAddress, virtioArgs),
 			"-netdev", fmt.Sprintf("tap,id=net%d,vhost=on,fd=%d", i, fd),
 		)
 		fd++

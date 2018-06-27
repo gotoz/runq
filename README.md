@@ -221,7 +221,7 @@ Environment variables have priority over global options.
 Extra storage can be added in the form of Qcow2 images, raw file images or
 regular block devices. Devices will be mounted automatically if they contain a
 supported filesytem and a mountpoint has been specified.
-Supported filesystems are ext2, ext3, ext4 and xfs.
+Supported filesystems are ext2, ext3, ext4, xfs and btrfs.
 
 The mount point must be prefixed with `/dev/disk` and one of the
 supported cache types (writeback, writethrough, none or unsafe).

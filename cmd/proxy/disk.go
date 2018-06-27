@@ -68,7 +68,7 @@ func updateDisks(disks []vm.Disk) error {
 		}
 
 		switch p[3] {
-		case "ext2", "ext3", "ext4", "xfs":
+		case "ext2", "ext3", "ext4", "xfs", "btrfs":
 			d.Fstype = p[3]
 			d.Dir = "/" + filepath.Join(p[4:]...)
 		case "none":

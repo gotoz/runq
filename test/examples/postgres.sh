@@ -20,8 +20,8 @@ trap cleanup 0 2 15
 docker run \
     --runtime runq \
     --name $name \
-    -e RUNQ_MEM=128 \
-    -e RUNQ_CPU=1 \
+    -e RUNQ_MEM=512 \
+    -e RUNQ_CPU=2 \
     -e POSTGRES_PASSWORD=$PGPASSWORD \
     -v $disk:/dev/disk/writeback/ext4/var/lib/postgresql \
     -d \

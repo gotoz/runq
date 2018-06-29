@@ -29,7 +29,7 @@ func setupDisks(disks []vm.Disk) error {
 			continue
 		}
 
-		if err := loadKernelModules(disk.Fstype); err != nil {
+		if err := loadKernelModules(disk.Fstype, "/rootfs"); err != nil {
 			return err
 		}
 

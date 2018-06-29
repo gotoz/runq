@@ -59,7 +59,7 @@ func runInit() error {
 		return err
 	}
 
-	if err := loadKernelModules("base"); err != nil {
+	if err := loadKernelModules("base", ""); err != nil {
 		return err
 	}
 
@@ -257,7 +257,7 @@ func parseCmdline() {
 	}
 }
 
-func loadKernelModules(kind string) error {
+func loadKernelModules(kind, prefix string) error {
 	file, err := os.Open("/kernel.conf")
 	if err != nil {
 		return err
@@ -277,7 +277,7 @@ func loadKernelModules(kind string) error {
 		if f[0] != kind {
 			continue
 		}
-		if err := util.Insmod(f[1], f[2:]); err != nil {
+		if err := util.Insmod(prefix+f[1], f[2:]); err != nil {
 			return err
 		}
 	}

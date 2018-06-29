@@ -7,7 +7,7 @@ TMP_DIR=$(mktemp -d)
 
 pushd $QEMU_ROOT >/dev/null
 while read x f; do
-    [[ $x == \#* ]] && continue
+    [[ $x != base* ]] && continue
     cp --parents ./$f $TMP_DIR/
 done < kernel.conf
 

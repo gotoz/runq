@@ -2,5 +2,5 @@ GO := go
 ARCH := $(shell uname -m)
 RUNQ_ROOT := /var/lib/runq
 QEMU_ROOT := $(RUNQ_ROOT)/qemu
-GIT_COMMIT := $(shell git describe --abbrev=7 --dirty --always)
-
+GIT_SHA1 := $(shell git rev-parse --short HEAD)
+GIT_COMMIT := $(if $(shell git status --porcelain --untracked-files=no),$(GIT_SHA1)-dirty,$(GIT_SHA1))

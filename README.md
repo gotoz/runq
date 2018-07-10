@@ -8,8 +8,8 @@ The focus is on solving real problems, not on number of features.
 
 Key differences to other hypervisor-based runtimes:
 * minimalistic design, small code base
-* no modification to exiting Docker tools (dockerd, containerd, runc...)
-* coexistance of runq containers and regular runc containers
+* no modification to existing Docker tools (dockerd, containerd, runc...)
+* coexistence of runq containers and regular runc containers
 * no extra state outside of Docker (no libvirt, no changes to /var/run/...)
 * simple init daemon, no systemd, no busybox
 * no custom guest kernel or custom qemu needed

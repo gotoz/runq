@@ -1,10 +1,15 @@
 #!/bin/bash
 . $(cd ${0%/*};pwd;)/../common.sh
 
-n=3
+n_bridge=2
+n_macvlan=2
+
 cleanup() {
-    for ((i=0; i<n; i++)); do
-        docker network rm mynet-$$-$i &>/dev/null
+    for ((i=0; i<n_bridge; i++)); do
+        docker network rm my-bridge-net-$$-$i &>/dev/null
+    done
+    for ((i=0; i<n_macvlan; i++)); do
+        docker network rm my-macvlan-net-$$-$i &>/dev/null
     done
 }
 
@@ -18,14 +23,22 @@ docker create \
     --name $name \
     $image sh -c 'rc=$(ls -d /sys/class/net/*|wc -l); exit $rc'
 
-for ((i=0; i<n; i++)); do
-    net_name=mynet-$$-$i
+for ((i=0; i<n_bridge; i++)); do
+    net_name=my-bridge-net-$$-$i
     if [[ -z $(docker network ls -q  --filter name=$net_name) ]]; then
-        docker network create $net_name
+        docker network create -d bridge $net_name
+    fi
+    docker network connect $net_name $name
+done
+
+for ((i=0; i<n_macvlan; i++)); do
+    net_name=my-macvlan-net-$$-$i
+    if [[ -z $(docker network ls -q  --filter name=$net_name) ]]; then
+        docker network create -d macvlan $net_name
     fi
     docker network connect $net_name $name
 done
 
 docker start -ai $name
-checkrc $? $((n+2)) "$comment"
+checkrc $? $((n_bridge + n_macvlan + 2)) "$comment"
 

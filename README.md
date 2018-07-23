@@ -207,6 +207,10 @@ Multiple networks can be used by connecting a container to the networks
 before start. See [test/integration/net.sh](test/integration/net.sh) as an
 example.
 
+runq container can also be connected to one or more Docker networks of type Macvlan.
+This allows a direct connection between the VM and the physical host network
+without bridge and without NAT. See https://docs.docker.com/network/macvlan/ for details.
+
 Docker uses an embedded DNS server (127.0.0.11) for containers that are
 connected to custom networks. This IP is not reachable from within the VM.
 Therefore DNS for runq containers must be configured seperatetly.

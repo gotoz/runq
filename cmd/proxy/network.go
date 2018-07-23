@@ -20,13 +20,16 @@ func setupNetwork() ([]vm.Network, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	for _, veth := range links {
-		if veth.Type() != "veth" {
+	for _, link := range links {
+		switch link.Type() {
+		case "veth", "macvlan":
+		default:
 			continue
 		}
-		attr := veth.Attrs()
 
-		addrs, err := netlink.AddrList(veth, netlink.FAMILY_ALL)
+		attr := link.Attrs()
+
+		addrs, err := netlink.AddrList(link, netlink.FAMILY_ALL)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -35,7 +38,7 @@ func setupNetwork() ([]vm.Network, error) {
 		}
 
 		var gateway net.IP
-		routes, err := netlink.RouteList(veth, netlink.FAMILY_V4)
+		routes, err := netlink.RouteList(link, netlink.FAMILY_V4)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -47,13 +50,13 @@ func setupNetwork() ([]vm.Network, error) {
 		}
 
 		for _, a := range addrs {
-			err = netlink.AddrDel(veth, &a)
+			err = netlink.AddrDel(link, &a)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
 		}
 
-		if err = netlink.LinkSetDown(veth); err != nil {
+		if err = netlink.LinkSetDown(link); err != nil {
 			return nil, errors.WithStack(err)
 		}
 
@@ -93,12 +96,14 @@ func setupNetwork() ([]vm.Network, error) {
 		}
 
 		hardwareAddr := macvtap.Attrs().HardwareAddr
-		if err := netlink.LinkSetHardwareAddr(veth, hardwareAddr); err != nil {
+		if err := netlink.LinkSetHardwareAddr(link, hardwareAddr); err != nil {
 			return nil, errors.Wrapf(err, "LinkSetHardwareAddr %s", hardwareAddr)
 		}
 
-		if err := netlink.LinkSetUp(veth); err != nil {
-			return nil, errors.Wrapf(err, "LinkSetUp %s", attr.Name)
+		if link.Type() == "veth" {
+			if err := netlink.LinkSetUp(link); err != nil {
+				return nil, errors.Wrapf(err, "LinkSetUp %s", attr.Name)
+			}
 		}
 
 		networks = append(networks, vm.Network{

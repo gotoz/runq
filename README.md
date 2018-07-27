@@ -13,7 +13,7 @@ Key differences to other hypervisor-based runtimes:
 * no extra state outside of Docker (no libvirt, no changes to /var/run/...)
 * simple init daemon, no systemd, no busybox
 * no custom guest kernel or custom qemu needed
-* runs on x86_64 and s390x
+* runs on x86_64 and s390x (host kernel >= 4.8 with VHOST_VSOCK support is required)
 
 ## runc vs. runq
 ```
@@ -145,6 +145,8 @@ docker0   |                                                  VM    |
           |                         |                          |   |
           |     block dev     <-----|------->   /dev/xvda      |   |
           |                         |                          |   |
+          |     vsock         <-----|------->   vsock          |   |
+          |                         |                          |   |
           |                         +--------------------------+   |
           |                         |       guest kernel       |   |
           |                         +--------------------------+   |
@@ -159,8 +161,8 @@ docker0   |                                                  VM    |
     - new docker runtime
 
 * cmd/proxy
+    - Docker entry point
     - first process in container (PID 1)
-    - new Docker entry point
     - configures and starts Qemu (network, disks, ...)
     - forwards signals to VM init
     - receives application exit code
@@ -171,6 +173,9 @@ docker0   |                                                  VM    |
     - starts/stops target app (Docker entry point)
     - sends signals to target application
     - forwards application exit code back to proxy
+
+* cmd/runq-exec
+    - command line utility similar to *docker exec*
 
 * qemu
     - creates `/var/lib/runq/qemu`
@@ -186,6 +191,34 @@ docker0   |                                                  VM    |
 
 * pkg/util
     - utiliy functions used accross all commands
+
+## runq-exec
+runq-exec (`/var/lib/runq/runq-exec`) is a command line utility similar to **docker exec**. It allows running
+additional commands in existing runq containers executed from the host. It uses
+[VirtioVsock](https://wiki.qemu.org/Features/VirtioVsock) for the communication
+between host and VMs.
+```
+Usage:
+  runq-exec [options] <container> command args
+
+Run a command in a running runq container
+
+Options:
+  -h	print this help
+  -i	keep STDIN open even if not attached
+  -t	allocate a pseudo-TTY
+  -v	print version
+
+Environment Variable:
+  DOCKER_HOST    specifies the Docker daemon socket.
+
+Example:
+  runq-exec -ti a6c3b7c bash
+```
+VirtioVsock requires the `vhost_vsock` kernel module to be loaded on the host.
+runq tries to load it by running `modprobe` before the start of the first VM.
+On some systems the module `vmw_vsock_vmci_transport` must be unload first.
+(`modprobe -r vmw_vsock_vmci_transport`)
 
 ## Qemu and guest Kernel
 runq runs Qemu and Linux Kernel from the `/var/lib/runq/qemu` directory
@@ -295,23 +328,6 @@ Security Options:
   Profile: default
 ```
 
-## SIGUSR1 and SIGUSR2
-When sigusr is enabled the directory `/var/lib/runq/qemu/.runq`
-will be bind-mounted into the container VM under /.runq (read-only).
-Sending a signal SIGUSR1 or SIGUSR2 to the container will then trigger
-the execution of `/.runq/SIGUSR1` or `/.runq/SIGUSR2` in the VM.
-
-This feature must be enabled explicitly via the `--sigusr` runtime
-option (see daemon.json).
-
-The siguser command will run with uid 0 and gid 0, environment variables.
-The seccomp profile and the capabilities are the same as for the application
-process. If this feature is not enabled then the signals SIGUSR1 and SIGUSR2
-will be forwarded to the application process as usual.
-Note: The default behavior of a process receiving SIGUSR1 or SIGUSR2 is to terminate.
-```
-docker kill --signal SIGUSR1 <container ID>
-```
 
 ## Limitations
 Most docker commands and options work as expected. However, due to
@@ -319,7 +335,7 @@ the fact that the target application runs inside a Qemu VM which itself runs
 inside a Docker container and because of the minimalistic design principle of runq
 some docker commands and options don't work. E.g:
 * adding / removing networks and storage dynamically
-* docker exec
+* docker exec (see runq-exec)
 * docker swarm
 * privileged mode
 * apparmor, selinux, ambient
@@ -356,7 +372,7 @@ However to try out runq in a VM guest the (experimental) runq runtime configurat
 For fast development cycles runq can be build on the host as follows:
 1. Prerequisites:
 * Docker >= 17.09.x-ce
-* Go >= 1.9
+* Go >= 1.11
 * GOPATH must be set
 * `/var/lib/runq` must be writable by the current user
 * [Libseccomp](https://github.com/seccomp/libseccomp/) static library.

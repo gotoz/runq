@@ -40,6 +40,14 @@ const (
 	RawFile                         // regular file used as block device
 )
 
+// Processtype defines different processes.
+type Processtype int
+
+const (
+	Entrypoint Processtype = iota
+	Vsockd
+)
+
 // Rlimit details
 type Rlimit struct {
 	Hard uint64
@@ -101,6 +109,7 @@ type Process struct {
 	Cwd             string
 	Env             []string
 	NoNewPrivileges bool
+	Type            Processtype
 	Rlimits         map[string]Rlimit
 	SeccompGob      []byte
 	Terminal        bool
@@ -120,7 +129,6 @@ type Linux struct {
 	Mounts      []Mount
 	NestedVM    bool
 	Networks    []Network
-	Sigusr      bool
 	Sysctl      map[string]string
 }
 

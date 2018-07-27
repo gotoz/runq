@@ -40,12 +40,6 @@ var Rlimits = map[string]Rlimit{
 	"RLIMIT_SIGPENDING": {Hard: 65536, Soft: 65536},
 }
 
-// SigCommands defines commands that can be exececuted by signals.
-var SigCommands = map[os.Signal]string{
-	syscall.SIGUSR1: "/.runq/SIGUSR1",
-	syscall.SIGUSR2: "/.runq/SIGUSR2",
-}
-
 // Signals that proxy catches and forwards to init.
 var Signals = []os.Signal{
 	syscall.SIGHUP,

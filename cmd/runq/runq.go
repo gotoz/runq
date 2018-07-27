@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
@@ -14,7 +16,6 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/gotoz/runq/pkg/vm"
-
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/vishvananda/netlink"
 )
@@ -81,7 +82,6 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 		GitCommit:   runqCommit,
 		Mem:         context.GlobalInt("mem"),
 		NestedVM:    context.GlobalBool("nestedvm"),
-		Sigusr:      context.GlobalBool("sigusr"),
 		Sysctl:      spec.Linux.Sysctl,
 	}
 
@@ -107,10 +107,11 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 	// Process
 	//
 	vmdata.Process = vm.Process{
-		Terminal:        spec.Process.Terminal,
+		Args:            spec.Process.Args,
 		Cwd:             spec.Process.Cwd,
 		NoNewPrivileges: spec.Process.NoNewPrivileges,
-		Args:            spec.Process.Args,
+		Terminal:        spec.Process.Terminal,
+		Type:            vm.Entrypoint,
 	}
 
 	spec.Process.ApparmorProfile = ""
@@ -181,6 +182,7 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 	iPtr := func(i int64) *int64 { return &i }
 
+	// /dev/tap*
 	major, err := macvtapMajor()
 	if err != nil {
 		return err
@@ -188,18 +190,89 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 	if major == 0 {
 		return fmt.Errorf("can't get macvtap major device number")
 	}
-
-	// /dev/tap*
 	spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
-		Allow: true, Type: "c", Major: &major, Access: "rwm",
+		Allow: true, Type: "c", Major: iPtr(major), Access: "rwm",
 	})
+
 	// /dev/kvm
 	spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
 		Allow: true, Type: "c", Major: iPtr(10), Minor: iPtr(232), Access: "rwm",
 	})
+	filemode := os.FileMode(0600)
+	id := uint32(0)
+	spec.Linux.Devices = append(spec.Linux.Devices, specs.LinuxDevice{
+		Path:     "/dev/kvm",
+		Type:     "c",
+		Major:    10,
+		Minor:    232,
+		FileMode: &filemode,
+		UID:      &id,
+		GID:      &id,
+	})
+
 	// /dev/vhost-net
 	spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
 		Allow: true, Type: "c", Major: iPtr(10), Minor: iPtr(238), Access: "rwm",
+	})
+	spec.Linux.Devices = append(spec.Linux.Devices, specs.LinuxDevice{
+		Path:     "/dev/vhost-net",
+		Type:     "c",
+		Major:    10,
+		Minor:    238,
+		FileMode: &filemode,
+		UID:      &id,
+		GID:      &id,
+	})
+
+	// /dev/vsock
+	major, minor, err := majorMinor("/sys/class/misc/vsock/dev")
+	if err != nil {
+		if _, ok := err.(*os.PathError); ok {
+			cmd := exec.Command("modprobe", "vhost_vsock")
+			if err := cmd.Run(); err != nil {
+				return err
+			}
+			major, minor, err = majorMinor("/sys/class/misc/vsock/dev")
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if major == 0 || minor == 0 {
+		return fmt.Errorf("can't get vsock major/minor device numbers")
+	}
+	spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
+		Allow: true, Type: "c", Major: iPtr(major), Minor: iPtr(minor), Access: "rwm",
+	})
+	spec.Linux.Devices = append(spec.Linux.Devices, specs.LinuxDevice{
+		Path:     "/dev/vsock",
+		Type:     "c",
+		Major:    major,
+		Minor:    minor,
+		FileMode: &filemode,
+		UID:      &id,
+		GID:      &id,
+	})
+
+	// /dev/vhost-vsock
+	major, minor, err = majorMinor("/sys/class/misc/vhost-vsock/dev")
+	if err != nil {
+		return err
+	}
+	if major == 0 || minor == 0 {
+		return fmt.Errorf("can't get vhost-vsock major/minor device number")
+	}
+	spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
+		Allow: true, Type: "c", Major: iPtr(major), Minor: iPtr(minor), Access: "rwm",
+	})
+	spec.Linux.Devices = append(spec.Linux.Devices, specs.LinuxDevice{
+		Path:     "/dev/vhost-vsock",
+		Type:     "c",
+		Major:    major,
+		Minor:    minor,
+		FileMode: &filemode,
+		UID:      &id,
+		GID:      &id,
 	})
 
 	// /dev/disk/...
@@ -214,27 +287,6 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 		}
 	}
 
-	filemode := os.FileMode(0600)
-	id := uint32(0)
-	spec.Linux.Devices = append(spec.Linux.Devices, specs.LinuxDevice{
-		Path:     "/dev/kvm",
-		Type:     "c",
-		Major:    10,
-		Minor:    232,
-		FileMode: &filemode,
-		UID:      &id,
-		GID:      &id,
-	})
-
-	spec.Linux.Devices = append(spec.Linux.Devices, specs.LinuxDevice{
-		Path:     "/dev/vhost-net",
-		Type:     "c",
-		Major:    10,
-		Minor:    238,
-		FileMode: &filemode,
-		UID:      &id,
-		GID:      &id,
-	})
 	return nil
 }
 
@@ -314,7 +366,7 @@ func parseTmfpsMount(m specs.Mount) (int, string) {
 // macvtap driver. It creates a dummy macvtap device to force
 // loading of the macvtap kernel modules.
 func macvtapMajor() (int64, error) {
-	major, err := parseProcDevice()
+	major, err := parseProcDevice("macvtap")
 	if err != nil {
 		return 0, err
 	}
@@ -352,12 +404,10 @@ func macvtapMajor() (int64, error) {
 			break
 		}
 	}
-	return parseProcDevice()
+	return parseProcDevice("macvtap")
 }
 
-func parseProcDevice() (int64, error) {
-	var err error
-
+func parseProcDevice(name string) (int64, error) {
 	fd, err := os.Open("/proc/devices")
 	if err != nil {
 		return 0, err
@@ -370,7 +420,7 @@ func parseProcDevice() (int64, error) {
 	for scanner.Scan() {
 		s := strings.Fields(scanner.Text())
 		if len(s) > 1 {
-			if s[1] == "macvtap" {
+			if s[1] == name {
 				major, err = strconv.ParseInt(s[0], 10, 64)
 				if err != nil {
 					return 0, fmt.Errorf("Atoi %s: %v", s[0], err)
@@ -380,4 +430,21 @@ func parseProcDevice() (int64, error) {
 		}
 	}
 	return major, scanner.Err()
+}
+
+// majorMinor returns major and minor device number for a given syspath.
+func majorMinor(syspath string) (int64, int64, error) {
+	// cat /sys/class/misc/vsock/dev
+	// 10:52
+	buf, err := ioutil.ReadFile(syspath)
+	if err != nil {
+		return 0, 0, err
+	}
+	s := strings.Split(strings.TrimSpace(string(buf)), ":")
+	major, err := strconv.ParseInt(s[0], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	minor, err := strconv.ParseInt(s[1], 10, 64)
+	return major, minor, err
 }

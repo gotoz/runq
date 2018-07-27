@@ -3,16 +3,23 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
 
 	"github.com/pkg/errors"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 	var cpuArgs, virtioArgs string
@@ -44,6 +51,14 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		"-append", vm.KernelParameters,
 	}
 
+	var cid string
+	ok, _ := regexp.MatchString("[0-9a-fA-F]{8,}", vmdata.ContainerID)
+	if ok {
+		cid = "0x" + vmdata.ContainerID[:8]
+	} else {
+		cid = fmt.Sprintf("%#x", rand.Int31())
+	}
+
 	customArgs := map[string][]string{
 		"amd64": {
 			"/usr/bin/qemu-system-x86_64",
@@ -51,12 +66,14 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 			"-chardev", "stdio,id=console,signal=off",
 			"-serial", "chardev:console",
 			"-no-acpi",
+			"-device", "vhost-vsock-pci,guest-cid=" + cid,
 		},
 		"s390x": {
 			"/usr/bin/qemu-system-s390x",
 			"-device", "virtio-9p-ccw,fsdev=rootfs_dev,mount_tag=rootfs",
 			"-chardev", "stdio,id=console,signal=off",
 			"-device", "sclpconsole,chardev=console",
+			"-device", "vhost-vsock-ccw,guest-cid=" + cid,
 		},
 	}
 

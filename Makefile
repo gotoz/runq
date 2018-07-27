@@ -1,6 +1,6 @@
 include make.rules
 
-SUBDIRS := cmd/proxy cmd/init cmd/runq
+SUBDIRS := cmd/proxy cmd/init cmd/runq cmd/runq-exec
 TAR := runq-$(GIT_COMMIT).tar.gz
 
 .PHONY: all $(SUBDIRS) install image test tarfile release release-install clean distclean
@@ -13,6 +13,7 @@ $(SUBDIRS):
 install: $(SUBDIRS) $(QEMU_ROOT)
 	$(MAKE) -C cmd/proxy install
 	$(MAKE) -C cmd/runq install
+	$(MAKE) -C cmd/runq-exec install
 	$(MAKE) -C initrd install
 
 image:

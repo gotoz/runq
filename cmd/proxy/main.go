@@ -85,12 +85,6 @@ func run(vmdataB64 string) (int, error) {
 		return 1, err
 	}
 
-	if vmdata.Sigusr {
-		if err = bindMountSigusrDir(); err != nil {
-			return 1, err
-		}
-	}
-
 	// ackChan receives acknowledge messages from init.
 	// msgChan to send messages to init.
 	const vmsocket = "/dev/runq.sock"
@@ -152,17 +146,10 @@ func run(vmdataB64 string) (int, error) {
 	go func() {
 		for {
 			sig := <-sigChan
-			if command, ok := vm.SigCommands[sig]; ok && vmdata.Sigusr {
-				msgChan <- vm.Msg{
-					Type: vm.Command,
-					Data: []byte(command),
-				}
-			} else {
-				log.Printf("forwarding signal '%#v' to init", sig)
-				msgChan <- vm.Msg{
-					Type: vm.Signal,
-					Data: []byte{uint8(sig.(syscall.Signal))},
-				}
+			log.Printf("forwarding signal '%#v' to init", sig)
+			msgChan <- vm.Msg{
+				Type: vm.Signal,
+				Data: []byte{uint8(sig.(syscall.Signal))},
 			}
 		}
 	}()
@@ -264,21 +251,6 @@ func completeVmdata(vmdata *vm.Data) error {
 func bindMountKernelModules() error {
 	var src = "/lib/modules"
 	var dest = "/rootfs/lib/modules"
-	if !util.DirExists(src) {
-		return nil
-	}
-	if !util.DirExists(dest) {
-		if err := os.MkdirAll(dest, 0755); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	err := unix.Mount(src, dest, "bind", syscall.MS_BIND|syscall.MS_RDONLY, "")
-	return errors.WithStack(err)
-}
-
-func bindMountSigusrDir() error {
-	src := "/.runq"
-	dest := "/rootfs/.runq"
 	if !util.DirExists(src) {
 		return nil
 	}

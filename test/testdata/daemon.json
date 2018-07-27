@@ -7,8 +7,7 @@
         "--mem", "256", 
         "--dns", "8.8.8.8,8.8.4.4",
         "--dns-opts", "timeout:2",
-        "--dns-search", "example.com",
-        "--sigusr"
+        "--dns-search", "example.com"
       ]
     }
   }

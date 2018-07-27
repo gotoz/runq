@@ -7,9 +7,11 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -165,8 +167,39 @@ func Killall() {
 		if len(buf) == 0 {
 			return filepath.SkipDir
 		}
-		log.Printf("killing: %d (%s)", pid, string(buf))
 		unix.Kill(pid, unix.SIGKILL)
 		return filepath.SkipDir
 	})
+}
+
+// ErrorToRc turns an error value into a Bash like exit code and an error message.
+func ErrorToRc(err error) (uint8, string) {
+	if err == nil {
+		return 0, ""
+	}
+
+	var rc uint8 = 1
+	switch err := err.(type) {
+	case *exec.ExitError:
+		if waitStatus, ok := err.Sys().(syscall.WaitStatus); ok {
+			switch {
+			case waitStatus.Exited():
+				rc = uint8(waitStatus.ExitStatus())
+			case waitStatus.Signaled():
+				// bash like: signal number + 128
+				rc = uint8(waitStatus.Signal()) + 128
+			}
+		}
+	case *os.PathError:
+		switch err.Err {
+		case syscall.EACCES, syscall.ENOEXEC, syscall.EISDIR, syscall.EPERM:
+			rc = 126
+		case syscall.ENOENT:
+			rc = 127
+		}
+	case *exec.Error:
+		rc = 127
+	}
+
+	return rc, fmt.Sprintf("%+v", err)
 }

@@ -25,31 +25,25 @@ func newForker(process vm.Process) *forker {
 	}
 }
 
-func (f forker) forkMainChild() *child {
+func (f forker) forkEntryPoint() *child {
 	return &child{
-		process:   f.process,
-		command:   f.process.Args[0],
-		mainChild: true,
+		process: f.process,
 	}
 }
 
-func (f forker) forkCustomChild(command string) *child {
+func (f forker) forkVsockd() *child {
 	return &child{
 		process: vm.Process{
-			Args:         []string{command},
-			Capabilities: f.process.Capabilities,
-			Env:          f.process.Env,
-			SeccompGob:   f.process.SeccompGob,
+			Args: []string{"/proc/self/exe", "vsockd"},
+			Env:  f.process.Env,
+			Type: vm.Vsockd,
 		},
-		command: command,
 	}
 }
 
 type child struct {
-	process   vm.Process
-	command   string
-	mainChild bool
-	pid       int
+	process vm.Process
+	pid     int
 }
 
 func (c *child) start() error {
@@ -132,7 +126,7 @@ func (c *child) start() error {
 func (c *child) wait() {
 	var wstatus unix.WaitStatus
 	_, err := unix.Wait4(c.pid, &wstatus, 0, nil)
-	if c.mainChild {
+	if c.process.Type == vm.Entrypoint {
 		switch {
 		case err != nil:
 			shutdown(1, fmt.Sprintf("%+v", errors.WithStack(err)))
@@ -144,14 +138,8 @@ func (c *child) wait() {
 		}
 		return
 	}
-	switch {
-	case err != nil:
+	if err != nil {
 		log.Print(err)
-	case wstatus.Exited():
-		log.Printf("pid %d: exit status: %d", c.pid, wstatus.ExitStatus())
-	case wstatus.Signaled():
-		// bash like: 128 + signal number
-		log.Printf("pid %d: exit status: %d", c.pid, int(wstatus.Signal())+128)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
@@ -61,18 +62,20 @@ func runChild() error {
 		return err
 	}
 
-	if process.NoNewPrivileges {
-		if err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0); err != nil {
-			return errors.WithStack(err)
+	if process.Type == vm.Entrypoint {
+		if process.NoNewPrivileges {
+			if err := unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0); err != nil {
+				return errors.WithStack(err)
+			}
 		}
-	}
 
-	if err := dropCapabilities(process.Capabilities); err != nil {
-		return err
-	}
+		if err := dropCapabilities(process.Capabilities); err != nil {
+			return err
+		}
 
-	if err := initSeccomp(process.SeccompGob); err != nil {
-		return err
+		if err := initSeccomp(process.SeccompGob); err != nil {
+			return err
+		}
 	}
 
 	if err := setPATH(process.Env); err != nil {
@@ -80,6 +83,9 @@ func runChild() error {
 	}
 
 	cmd := exec.Command(os.Args[1], os.Args[2:]...)
+	if os.Args[1] == "/proc/self/exe" {
+		cmd.Args = append([]string{os.Args[2]}, os.Args[3:]...)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = process.Env
@@ -98,7 +104,7 @@ func runChild() error {
 	}
 
 	if err := cmd.Start(); err != nil {
-		rc, msg := errorToRc(err)
+		rc, msg := util.ErrorToRc(err)
 		log.Print(msg)
 		os.Exit(int(rc))
 	}

@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -37,8 +36,12 @@ func init() {
 }
 
 func main() {
-	if os.Args[0] == "child" {
+	switch os.Args[0] {
+	case "child":
 		mainChild()
+		return
+	case "vsockd":
+		mainVsockd()
 		return
 	}
 
@@ -145,18 +148,25 @@ func runInit() error {
 
 	forker := newForker(vmdata.Process)
 
-	// Start the main application process.
-	app := forker.forkMainChild()
-	if err := app.start(); err != nil {
-		shutdown(errorToRc(err))
-	}
-	if app.pid == 0 {
-		shutdown(1, "coudln't get PID from child")
-	}
-	go app.wait()
-
 	// Start reaper to wait4 zombie processes.
 	go reaper()
+
+	// Start vsock daemon.
+	vsockd := forker.forkVsockd()
+	if err := vsockd.start(); err != nil {
+		shutdown(util.ErrorToRc(err))
+	}
+	go vsockd.wait()
+
+	// Start entry point process.
+	entryPoint := forker.forkEntryPoint()
+	if err := entryPoint.start(); err != nil {
+		shutdown(util.ErrorToRc(err))
+	}
+	if entryPoint.pid == 0 {
+		shutdown(1, "coudln't get PID from child")
+	}
+	go entryPoint.wait()
 
 	// Main loop to process messages received from proxy.
 	for {
@@ -165,22 +175,9 @@ func runInit() error {
 		case vm.Signal:
 			// Forward signal to application.
 			sig := syscall.Signal(int(msg.Data[0]))
-			if err := app.signal(sig); err != nil {
-				log.Printf("send signal %#v to %d: %v", sig, app.pid, err)
+			if err := entryPoint.signal(sig); err != nil {
+				log.Printf("send signal %#v to %d: %v", sig, entryPoint.pid, err)
 			}
-		case vm.Command:
-			// Start custom child.
-			go func() {
-				command := string(msg.Data)
-				c := forker.forkCustomChild(command)
-				if err := c.start(); err != nil {
-					rc, msg := errorToRc(err)
-					log.Printf("%s failed: rc=%d %s", command, rc, msg)
-					return
-				}
-				log.Printf("running %s PID=%d", command, c.pid)
-				c.wait()
-			}()
 		default:
 			return errors.Errorf("received invalid message: %v", msg)
 		}
@@ -314,38 +311,6 @@ func setSysctl(vmdataSysctl map[string]string) error {
 		}
 	}
 	return nil
-}
-
-// errorToRc turns an error value into a Bash like exit code and an error message.
-func errorToRc(err error) (uint8, string) {
-	if err == nil {
-		return 0, ""
-	}
-
-	var rc uint8 = 1
-	switch err := err.(type) {
-	case *exec.ExitError:
-		if waitStatus, ok := err.Sys().(syscall.WaitStatus); ok {
-			switch {
-			case waitStatus.Exited():
-				rc = uint8(waitStatus.ExitStatus())
-			case waitStatus.Signaled():
-				// bash like: signal number + 128
-				rc = uint8(waitStatus.Signal()) + 128
-			}
-		}
-	case *os.PathError:
-		switch err.Err {
-		case syscall.EACCES, syscall.ENOEXEC, syscall.EISDIR, syscall.EPERM:
-			rc = 126
-		case syscall.ENOENT:
-			rc = 127
-		}
-	case *exec.Error:
-		rc = 127
-	}
-
-	return rc, fmt.Sprintf("%+v", err)
 }
 
 var once sync.Once

@@ -46,22 +46,6 @@ var SigCommands = map[os.Signal]string{
 	syscall.SIGUSR2: "/.runq/SIGUSR2",
 }
 
-// Defined message types
-const (
-	MsgtypeUnknown Msgtype = iota
-	Command                // command to execute
-	Signal                 // IPC signal such as SIGTERM
-	Vmdata                 // VM config data
-)
-
-// Defined Disktypes
-const (
-	DisktypeUnknown Disktype = iota // disk type is not known
-	BlockDevice                     // regular block device
-	Qcow2Image                      // Qcow2 image
-	RawFile                         // regular file used as block device
-)
-
 // Signals that proxy catches and forwards to init.
 var Signals = []os.Signal{
 	syscall.SIGHUP,

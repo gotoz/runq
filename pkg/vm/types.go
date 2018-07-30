@@ -17,6 +17,13 @@ import (
 // exchanged between proxy and init.
 type Msgtype uint8
 
+const (
+	MsgtypeUnknown Msgtype = iota
+	Command                // command to execute
+	Signal                 // IPC signal such as SIGTERM
+	Vmdata                 // VM config data
+)
+
 // Msg defines the format of the data exchanged between proxy and init.
 type Msg struct {
 	Type Msgtype
@@ -25,6 +32,13 @@ type Msg struct {
 
 // Disktype represents a valid disk types.
 type Disktype int
+
+const (
+	DisktypeUnknown Disktype = iota // disk type is not known
+	BlockDevice                     // regular block device
+	Qcow2Image                      // Qcow2 image
+	RawFile                         // regular file used as block device
+)
 
 // Rlimit details
 type Rlimit struct {

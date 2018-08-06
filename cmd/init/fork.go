@@ -31,12 +31,13 @@ func (f forker) forkEntryPoint() *child {
 	}
 }
 
-func (f forker) forkVsockd() *child {
+func (f forker) forkVsockd(certs vm.Certificates) *child {
 	return &child{
 		process: vm.Process{
-			Args: []string{"/proc/self/exe", "vsockd"},
-			Env:  f.process.Env,
-			Type: vm.Vsockd,
+			Args:         []string{"/proc/self/exe", "vsockd"},
+			Env:          f.process.Env,
+			Certificates: certs,
+			Type:         vm.Vsockd,
 		},
 	}
 }

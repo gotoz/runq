@@ -2,7 +2,7 @@
 // runq-exec and init/vsockd.
 package vs
 
-const Port = 1
+const Port uint32 = 1
 
 const (
 	_ byte = iota
@@ -12,7 +12,6 @@ const (
 )
 
 const (
-	ConfDefault byte = 1 << iota
-	ConfTTY
+	ConfTTY byte = 1 << iota
 	ConfStdin
 )

@@ -152,7 +152,7 @@ func runInit() error {
 	go reaper()
 
 	// Start vsock daemon.
-	vsockd := forker.forkVsockd()
+	vsockd := forker.forkVsockd(vmdata.Certificates)
 	if err := vsockd.start(); err != nil {
 		shutdown(util.ErrorToRc(err))
 	}

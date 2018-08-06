@@ -13,6 +13,8 @@ install: qemu.tar
 	rm -rf $(QEMU_ROOT)
 	mkdir -p $(QEMU_ROOT)
 	tar -C $(QEMU_ROOT) -xf qemu.tar
+	chmod 0700 $(QEMU_ROOT)
+	chmod 0750 $(RUNQ_ROOT)
 
 clean:
 	-rm -f qemu.tar

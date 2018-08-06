@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -24,7 +23,7 @@ func init() {
 func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 	var cpuArgs, virtioArgs string
 	if vmdata.NestedVM {
-		cpuArgs += ",pmu=off"
+		cpuArgs = ",pmu=off"
 		virtioArgs = ",disable-modern=true"
 	}
 
@@ -32,7 +31,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		"-machine", "accel=kvm,usb=off",
 		"-monitor", "none",
 		"-nodefaults",
-		"-name", vmdata.ContainerID,
+		"-name", vmdata.ContainerID[:12],
 		"-enable-kvm",
 		"-cpu", "host" + cpuArgs,
 		"-nographic",
@@ -51,13 +50,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		"-append", vm.KernelParameters,
 	}
 
-	var cid string
-	ok, _ := regexp.MatchString("[0-9a-fA-F]{8,}", vmdata.ContainerID)
-	if ok {
-		cid = "0x" + vmdata.ContainerID[:8]
-	} else {
-		cid = fmt.Sprintf("%#x", rand.Int31())
-	}
+	cid := fmt.Sprintf("%d", vmdata.VsockCID)
 
 	customArgs := map[string][]string{
 		"amd64": {
@@ -66,7 +59,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 			"-chardev", "stdio,id=console,signal=off",
 			"-serial", "chardev:console",
 			"-no-acpi",
-			"-device", "vhost-vsock-pci,guest-cid=" + cid,
+			"-device", "vhost-vsock-pci,guest-cid=" + cid + virtioArgs,
 		},
 		"s390x": {
 			"/usr/bin/qemu-system-s390x",

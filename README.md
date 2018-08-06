@@ -77,6 +77,14 @@ systemctl reload docker.service
 Note: To deploy runq on further Docker hosts only `/var/lib/runq` and `/etc/docker/daemon.json`
 must be copied.
 
+#### TLS certificates
+*runq-exec* creates a secure connection between host and VM guests. Users of *runq-exec* are
+authenticated via a client certificate. Access to the client certificate must be limitted to
+Docker users only.
+
+The CA and server certificates must be installed in `/var/lib/runq/qemu/certs`.
+Access must be limmited to the root user only.
+
 ## Usage examples
 
 the simplest example
@@ -127,32 +135,32 @@ docker run \
 
 ## runq Components
 ```
- docker cli
-    dockerd engine
-       docker-containerd-shim
-            runq                                           container
-          +--------------------------------------------------------+
-          |                                                        |
-docker0   |                                                  VM    |
-   veth <---> veth                  +--------------------------+   |
-          |        `<--- macvtap ---|-------> eth0             |   |
-          |                         |                          |   |
-          |   proxy                 |      init                |   |
-          |                         |                          |   |
-          |     msg, signals  <-----|------->   vport          |   |
-          |                         |                          |   |
-          |     /overlayfs    <-----|------->   /app           |   |
-          |                         |                          |   |
-          |     block dev     <-----|------->   /dev/xvda      |   |
-          |                         |                          |   |
-          |     vsock         <-----|------->   vsock          |   |
-          |                         |                          |   |
-          |                         +--------------------------+   |
-          |                         |       guest kernel       |   |
-          |                         +--------------------------+   |
-          |                                     qemu               |
-          |                                                        |
-          +--------------------------------------------------------+
+   docker cli
+      dockerd engine
+         docker-containerd-shim
+               runq                                           container
+              +--------------------------------------------------------+
+              |                                                        |
+  docker0     |                                                  VM    |
+     veth <------> veth                 +--------------------------+   |
+              |        `<--- macvtap ---|-------> eth0             |   |
+              |                         |                          |   |
+              |  proxy                  |      init                |   |
+              |                         |                          |   |
+              |     msg, signals  <-----|------->   vport          |   |
+              |                         |                          |   |
+              |     /overlayfs    <-----|------->   /app           |   |
+              |                         |                          |   |
+              |     block dev     <-----|------->   /dev/xvda      |   |
+              |                         |                          |   |
+  runq-exec ----(TLS)----------------------->  vsockd              |   |
+              |                         |                          |   |
+              |                         +--------------------------+   |
+              |                         |       guest kernel       |   |
+              |                         +--------------------------+   |
+              |                                     qemu               |
+              |                                                        |
+              +--------------------------------------------------------+
 
  --------------------------------------------------------------------------
                                 host kernel
@@ -196,7 +204,7 @@ docker0   |                                                  VM    |
 runq-exec (`/var/lib/runq/runq-exec`) is a command line utility similar to **docker exec**. It allows running
 additional commands in existing runq containers executed from the host. It uses
 [VirtioVsock](https://wiki.qemu.org/Features/VirtioVsock) for the communication
-between host and VMs.
+between host and VMs. TLS is used for encryption and client authorization.
 ```
 Usage:
   runq-exec [options] <container> command args
@@ -204,10 +212,14 @@ Usage:
 Run a command in a running runq container
 
 Options:
-  -h	print this help
-  -i	keep STDIN open even if not attached
-  -t	allocate a pseudo-TTY
-  -v	print version
+  -c string
+        TLS certificate file (default "/var/lib/runq/cert.pem")
+  -k string
+        TLS private key file (default "/var/lib/runq/key.pem")
+  -h    print this help
+  -i    keep STDIN open even if not attached
+  -t    allocate a pseudo-TTY
+  -v    print version
 
 Environment Variable:
   DOCKER_HOST    specifies the Docker daemon socket.

@@ -101,11 +101,19 @@ type User struct {
 	AdditionalGids []uint32
 }
 
+// Certificates
+type Certificates struct {
+	CACert    []byte
+	VsockCert []byte
+	VsockKey  []byte
+}
+
 // Process contains information to start an application inside the VM.
 type Process struct {
 	User
 	Args            []string
 	Capabilities    AppCapabilities
+	Certificates    Certificates
 	Cwd             string
 	Env             []string
 	NoNewPrivileges bool
@@ -130,10 +138,12 @@ type Linux struct {
 	NestedVM    bool
 	Networks    []Network
 	Sysctl      map[string]string
+	VsockCID    uint32
 }
 
 // Data contains all data needed by the VM.
 type Data struct {
+	Certificates
 	Process
 	Linux
 }

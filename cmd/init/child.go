@@ -103,10 +103,32 @@ func runChild() error {
 		},
 	}
 
+	certs := process.Certificates
+	var r, w *os.File
+	if len(certs.CACert) > 0 {
+		r, w, err = os.Pipe()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		cmd.ExtraFiles = []*os.File{r}
+	}
+
 	if err := cmd.Start(); err != nil {
 		rc, msg := util.ErrorToRc(err)
 		log.Print(msg)
 		os.Exit(int(rc))
+	}
+
+	if len(certs.CACert) > 0 {
+		r.Close()
+		buf := append(certs.CACert, 0)
+		buf = append(buf, certs.VsockCert...)
+		buf = append(buf, 0)
+		buf = append(buf, certs.VsockKey...)
+		if _, err := w.Write(buf); err != nil {
+			log.Fatalf("%+v", errors.WithStack(err))
+		}
+		w.Close()
 	}
 
 	pidBuf := make([]byte, 4)

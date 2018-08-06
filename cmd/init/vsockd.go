@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -13,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gotoz/runq/pkg/util"
+	"github.com/gotoz/runq/pkg/vm"
 	"github.com/gotoz/runq/pkg/vs"
 	"github.com/kr/pty"
 	"github.com/mdlayher/vsock"
@@ -22,7 +26,7 @@ import (
 
 type Job struct {
 	Cmd      *exec.Cmd
-	Config   byte
+	Conf     byte
 	CtrlConn net.Conn
 	Started  bool
 }
@@ -31,40 +35,109 @@ var jobs map[string]Job
 var mu sync.Mutex
 
 func mainVsockd() {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, unix.SIGTERM, unix.SIGUSR1, unix.SIGUSR2)
-	go func() { <-ch }()
-
+	signal.Ignore(unix.SIGTERM, unix.SIGUSR1, unix.SIGUSR2)
 	jobs = make(map[string]Job)
 
-	l, err := vsock.Listen(vs.Port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+	rd := os.NewFile(uintptr(3), "rd")
+	if rd == nil {
+		log.Fatal("failed to open pipe")
 	}
-	defer l.Close()
+	buf, err := ioutil.ReadAll(rd)
+	if err != nil {
+		log.Fatalf("failed to read key from pipe: %v", err)
+	}
+	rd.Close()
+
+	certs := bytes.Split(buf, []byte{0})
+	if len(certs) != 3 {
+		log.Fatal("failed to read PEMs from pipe")
+	}
+
+	certpool := x509.NewCertPool()
+	if !certpool.AppendCertsFromPEM(certs[0]) {
+		log.Fatalf("can't parse CA pem")
+	}
+
+	cert, err := tls.X509KeyPair(certs[1], certs[2])
+	if err != nil {
+		log.Fatalf("can't parse certificate: %v", err)
+	}
+
+	config := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    certpool,
+	}
+
+	inner, err := vsock.Listen(vm.VsockPort)
+	if err != nil {
+		log.Fatalf("listen failed: %v", err)
+	}
+	defer inner.Close()
+
+	l := tls.NewListener(inner, config)
 
 	for {
-		c, err := l.Accept()
+		conn, err := l.Accept()
 		if err != nil {
-			log.Fatalf("failed to accept: %v", err)
+			log.Printf("accept failed: %v", err)
+			continue
 		}
 
+		c, ok := conn.(*tls.Conn)
+		if !ok {
+			log.Printf("invalid connection type: %T", conn)
+			c.Close()
+			continue
+		}
+
+		if err := c.Handshake(); err != nil {
+			log.Print(err)
+			c.Close()
+			continue
+		}
+
+		addr, ok := c.RemoteAddr().(*vsock.Addr)
+		if !ok {
+			log.Printf("invalid remote address type: %T", c.RemoteAddr())
+			c.Close()
+			continue
+		}
+
+		if addr.ContextID != 2 {
+			log.Print("invalid connection from %v", addr)
+			c.Close()
+			continue
+		}
+
+		// TODO:
+		//   c.SetReadDeadline()
+		//   requires go1.11+ and latest version of mdlayher/vsock
 		go func() {
 			buf := make([]byte, 4096)
+
 			n, err := c.Read(buf)
 			if err != nil {
-				log.Printf("%+v", errors.WithStack(err))
+				log.Printf("read failed: %v", err)
 				c.Close()
 				return
 			}
-			// 1st byte determines the connection type
+
+			if n < 2 {
+				log.Print("message too short")
+				c.Close()
+				return
+			}
+
+			// first byte determines the connection type
 			switch buf[0] {
 			case vs.ConnControl:
 				controlConnection(c, buf[1:n])
 			case vs.ConnExecute:
 				executeConnection(c, buf[1:n])
 			default:
-				log.Printf("invald connection type %#x", buf[0])
+				log.Printf("invalid connection type %#x\n", buf[0])
+				c.Close()
 			}
 		}()
 	}
@@ -78,7 +151,7 @@ func controlConnection(c net.Conn, buf []byte) {
 	}
 
 	// first byte is the config byte
-	config := buf[0]
+	cmdConf := buf[0]
 
 	// remaining bytes are the command and arguments separated by \0
 	var args []string
@@ -88,36 +161,36 @@ func controlConnection(c net.Conn, buf []byte) {
 
 	job := Job{
 		Cmd:      exec.Command(args[0], args[1:]...),
-		Config:   config,
+		Conf:     cmdConf,
 		CtrlConn: c,
 	}
 
-	id := util.RandStr(10)
+	jobid := util.RandStr(10)
 	mu.Lock()
-	jobs[id] = job
+	jobs[jobid] = job
 	mu.Unlock()
 
-	c.Write([]byte(id))
+	c.Write([]byte(jobid))
 
 	// cleanup if client does not execute the job within 1 second
 	time.Sleep(time.Second)
 	mu.Lock()
-	job, exists := jobs[id]
+	job, exists := jobs[jobid]
 	if exists && !job.Started {
-		delete(jobs, id)
+		delete(jobs, jobid)
 		c.Close()
 	}
-	defer mu.Unlock()
+	mu.Unlock()
 }
 
 func executeConnection(c net.Conn, buf []byte) {
 	id := string(buf)
 	mu.Lock()
 	job, exists := jobs[id]
-	if !exists || job.Started == true {
+	if !exists || job.Started {
 		// client has sent invalid job id
 		mu.Unlock()
-		log.Printf("invalid id:%s", id)
+		log.Printf("invalid jobid:%s", id)
 		c.Close()
 		return
 	}
@@ -126,7 +199,7 @@ func executeConnection(c net.Conn, buf []byte) {
 	mu.Unlock()
 
 	var err error
-	if job.Config&vs.ConfTTY > 0 {
+	if job.Conf&vs.ConfTTY > 0 {
 		err = startCommandWithTTY(c, job)
 	} else {
 		err = startCommandNoTTY(c, job)
@@ -161,7 +234,6 @@ func executeConnection(c net.Conn, buf []byte) {
 	case <-time.After(time.Second * 3):
 	}
 
-	// cleanup resources
 	mu.Lock()
 	job, exists = jobs[id]
 	if exists {
@@ -179,7 +251,7 @@ func startCommandWithTTY(c net.Conn, job Job) error {
 	}
 	defer ptmx.Close()
 
-	if job.Config&vs.ConfStdin > 0 {
+	if job.Conf&vs.ConfStdin > 0 {
 		go io.Copy(ptmx, c)
 	}
 	io.Copy(c, ptmx)
@@ -191,7 +263,7 @@ func startCommandNoTTY(c net.Conn, job Job) error {
 	var stdout, stderr io.ReadCloser
 	var err error
 
-	if job.Config&vs.ConfStdin > 0 {
+	if job.Conf&vs.ConfStdin > 0 {
 		stdin, err = job.Cmd.StdinPipe()
 		if err != nil {
 			return errors.WithStack(err)
@@ -208,7 +280,7 @@ func startCommandNoTTY(c net.Conn, job Job) error {
 		return err
 	}
 
-	if job.Config&vs.ConfStdin > 0 {
+	if job.Conf&vs.ConfStdin > 0 {
 		go io.Copy(stdin, c)
 	}
 

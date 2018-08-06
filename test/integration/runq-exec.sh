@@ -19,7 +19,7 @@ docker run \
     --name $name \
     -v $runq_exec:/runq-exec \
     -dt \
-    $image sh
+    $image sh -c "du /;cat"
 
 sleep 2
 
@@ -38,7 +38,7 @@ docker run \
     --name $name \
     -v $runq_exec:/runq-exec \
     -dt \
-    $image sh
+    $image sh -c "du /;cat"
 
 sleep 2
 
@@ -76,8 +76,9 @@ checkrc $? 126 "no tty, check rc: not an executable rc=126 permission denied"
 
 n=10
 for i in `seq 1 $n`; do
-    $runq_exec $name sleep 3 &
+    $runq_exec $name sleep 10 &
 done
+sleep 5
 r="`$runq_exec $name pidof sleep | wc -w`"
 wait
 checkrc $n $r "run $n exec commands simultaneously"

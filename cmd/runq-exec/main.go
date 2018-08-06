@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -20,12 +21,28 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+const (
+	certDefault = "/var/lib/runq/cert.pem"
+	keyDefault  = "/var/lib/runq/key.pem"
+)
+
 var (
+	help     = flag.Bool("h", false, "print this help")
+	certFile = flag.String("c", certDefault, "TLS certificate file")
+	keyFile  = flag.String("k", keyDefault, "TLS private key file")
+	stdin    = flag.Bool("i", false, "keep STDIN open even if not attached")
+	tty      = flag.Bool("t", false, "allocate a pseudo-TTY")
+	version  = flag.Bool("v", false, "print version")
+
+	exitCode      = 1
 	gitCommit     string
 	terminalState *terminal.State
 )
 
 func init() {
+	log.SetFlags(0)
+	log.SetOutput(os.Stderr)
+
 	// support POSIX style flags
 	for i, v := range os.Args {
 		switch v {
@@ -46,125 +63,162 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  DOCKER_HOST    specifies the Docker daemon socket.")
 	fmt.Fprintln(os.Stderr, "\nExample:")
 	fmt.Fprintln(os.Stderr, "  runq-exec -ti a6c3b7c bash\n")
-	os.Exit(1)
-}
-
-func exit(rc int, msg string) {
-	if terminalState != nil {
-		terminal.Restore(0, terminalState)
-	}
-	if msg != "" {
-		fmt.Fprintln(os.Stderr, msg)
-	}
-	os.Exit(rc)
 }
 
 func main() {
-	_ = flag.Bool("h", false, "print this help")
-	stdin := flag.Bool("i", false, "keep STDIN open even if not attached")
-	tty := flag.Bool("t", false, "allocate a pseudo-TTY")
-	version := flag.Bool("v", false, "print version")
+	mainMain()
+	if terminalState != nil {
+		terminal.Restore(0, terminalState)
+	}
+	os.Exit(exitCode)
+}
+
+func mainMain() {
 	flag.Usage = usage
 	flag.Parse()
+	if *help {
+		flag.Usage()
+		exitCode = 0
+		return
+	}
 	if *version {
 		fmt.Printf("%s (%s)\n", gitCommit, runtime.Version())
-		os.Exit(0)
+		exitCode = 0
+		return
+	}
+	var cmdConf byte
+	if *stdin {
+		cmdConf |= vs.ConfStdin
+	}
+	if *tty {
+		cmdConf |= vs.ConfTTY
+		terminalState, _ = terminal.MakeRaw(0)
 	}
 	if flag.NArg() < 2 {
 		flag.Usage()
+		return
 	}
 
-	config := vs.ConfDefault
-	if *stdin {
-		config |= vs.ConfStdin
+	cert, err := tls.LoadX509KeyPair(*certFile, *keyFile)
+	if err != nil {
+		log.Print(err)
+		return
 	}
-	if *tty {
-		config |= vs.ConfTTY
-		terminalState, _ = terminal.MakeRaw(0)
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
 	}
 
 	var cmdline [][]byte
 	for _, v := range flag.Args()[1:] {
 		cmdline = append(cmdline, []byte(v))
 	}
-	cmdlineBuf := bytes.Join(cmdline, []byte{0})
+	cmdBuf := bytes.Join(cmdline, []byte{0})
 
 	containerID, err := realContainerID(flag.Arg(0))
 	if err != nil {
-		exit(1, err.Error())
+		log.Print(err)
+		return
 	}
 
-	// cid: vsock context ID
-	// - unique 32 bit number
-	// - calculated from first 4 bytes of the real container ID
-	cid, err := strconv.ParseUint(containerID[:8], 16, 32)
+	// cid = vsock context ID
+	// unique uint32 taken from first 4 bytes of the real container ID
+	i, err := strconv.ParseUint(containerID[:8], 16, 32)
 	if err != nil {
-		exit(1, "invalid container id: "+containerID)
+		log.Printf("invalid container id: %s", containerID)
+		return
 	}
+	cid := uint32(i)
 
-	// create ctrl connection
-	c, err := vsock.Dial(uint32(cid), uint32(vs.Port))
+	// create job request
+	conn, err := vsock.Dial(cid, vs.Port)
 	if err != nil {
-		exit(1, "failed to dial: "+err.Error())
+		log.Printf("failed to dial: %v", err)
+		return
 	}
-	defer c.Close()
+	defer conn.Close()
 
-	// send initial request
-	buf := append([]byte{vs.ConnControl, config}, cmdlineBuf...)
-	if _, err := c.Write(buf); err != nil {
-		exit(1, "failed to send inital request: "+err.Error())
+	tlsConn := tls.Client(conn, tlsConfig)
+	if err := tlsConn.Handshake(); err != nil {
+		log.Print(err)
+		return
 	}
 
-	// read job id response
+	buf := append([]byte{vs.ConnControl, cmdConf}, cmdBuf...)
+	if _, err := tlsConn.Write(buf); err != nil {
+		log.Printf("failed to send inital request: %v", err)
+		return
+	}
+
 	buf = make([]byte, 10)
-	_, err = c.Read(buf)
+	_, err = tlsConn.Read(buf)
 	if err != nil {
-		exit(1, "failed to read job id: "+err.Error())
+		log.Printf("failed to read job id: %v", err)
+		return
 	}
-	jobID := string(buf)
+	jobid := string(buf)
 
-	// create execute connection
-	go execute(cid, jobID, *stdin)
-
-	// read job return code
-	buf = make([]byte, 3)
-	n, err := c.Read(buf)
-	if err != nil {
-		exit(1, "failed to read return code: "+err.Error())
-	}
-
-	// send acknowledge message
-	if _, err := c.Write([]byte{vs.Done}); err != nil {
-		log.Printf("failed to ack message: " + err.Error())
-	}
-
-	rc, err := strconv.Atoi(string(buf[:n]))
-	if err != nil {
-		exit(1, "failed to parse return code: "+err.Error())
-	}
-	exit(rc, "")
+	done := make(chan int)
+	go execute(done, tlsConfig, cid, jobid)
+	go wait(done, tlsConn)
+	exitCode = <-done
 }
 
-func execute(cid uint64, jobID string, stdin bool) {
-	c, err := vsock.Dial(uint32(cid), uint32(vs.Port))
+// wait waits for early execution errors or the final exit code
+func wait(done chan<- int, c *tls.Conn) {
+	buf := make([]byte, 3)
+	n, err := c.Read(buf)
 	if err != nil {
-		exit(1, "failed to dial: "+err.Error())
-	}
-	defer c.Close()
-
-	buf := append([]byte{vs.ConnExecute}, jobID...)
-	if _, err := c.Write(buf); err != nil {
-		exit(1, "failed to write: "+err.Error())
+		log.Printf("failed to read return code: %v", err)
+		done <- 1
+		return
 	}
 
-	if stdin {
-		go io.Copy(c, os.Stdin)
+	if _, err := c.Write([]byte{vs.Done}); err != nil {
+		log.Printf("failed to send ack message: %v", err)
 	}
-	io.Copy(os.Stdout, c)
+
+	exitCode, err := strconv.Atoi(string(buf[:n]))
+	if err != nil {
+		log.Printf("failed to parse exit code: ", err)
+		done <- 1
+		return
+	}
+	done <- exitCode
+}
+
+// execute executes the requested job witch stdin and stdout attached
+func execute(done chan<- int, tlsConfig *tls.Config, cid uint32, jobid string) {
+	conn, err := vsock.Dial(cid, vs.Port)
+	if err != nil {
+		log.Printf("failed to dial: %v", err)
+		done <- 1
+		return
+	}
+	defer conn.Close()
+
+	tlsConn := tls.Client(conn, tlsConfig)
+	if err := tlsConn.Handshake(); err != nil {
+		log.Printf("tls handshake failed: %v", err)
+		done <- 1
+		return
+	}
+
+	buf := append([]byte{vs.ConnExecute}, jobid...)
+	if _, err := tlsConn.Write(buf); err != nil {
+		log.Printf("failed to write: %v", err)
+		done <- 1
+		return
+	}
+
+	if *stdin {
+		go io.Copy(tlsConn, os.Stdin)
+	}
+	io.Copy(os.Stdout, tlsConn)
 }
 
 // realContainerID tries to find the real container id (64 hex chars) for a given identifier
-// by a simple REST API call to the Docker engine.
+// by a REST API call to the Docker engine.
 func realContainerID(id string) (string, error) {
 	// taken from: https://github.com/moby/moby/blob/master/daemon/names/names.go
 	var re = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)

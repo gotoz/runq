@@ -85,6 +85,11 @@ Docker users only.
 The CA and server certificates must be installed in `/var/lib/runq/qemu/certs`.
 Access must be limmited to the root user only.
 
+Examples of server and client TLS certificates can be created with the script:
+```
+/var/lib/runq/qemu/mkcerts.sh
+```
+
 ## Usage examples
 
 the simplest example

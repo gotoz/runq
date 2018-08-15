@@ -55,6 +55,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 	customArgs := map[string][]string{
 		"amd64": {
 			"/usr/bin/qemu-system-x86_64",
+			"-device", "virtio-rng-pci,max-bytes=1024,period=1000" + virtioArgs,
 			"-device", "virtio-9p-pci,fsdev=rootfs_dev,mount_tag=rootfs" + virtioArgs,
 			"-chardev", "stdio,id=console,signal=off",
 			"-serial", "chardev:console",
@@ -63,6 +64,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		},
 		"s390x": {
 			"/usr/bin/qemu-system-s390x",
+			"-device", "virtio-rng-ccw,max-bytes=1024,period=1000",
 			"-device", "virtio-9p-ccw,fsdev=rootfs_dev,mount_tag=rootfs",
 			"-chardev", "stdio,id=console,signal=off",
 			"-device", "sclpconsole,chardev=console",

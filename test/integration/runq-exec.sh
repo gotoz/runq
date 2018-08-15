@@ -19,7 +19,7 @@ docker run \
     --name $name \
     -v $runq_exec:/runq-exec \
     -dt \
-    $image sh -c "du /;cat"
+    $image sh
 
 sleep 2
 
@@ -38,7 +38,7 @@ docker run \
     --name $name \
     -v $runq_exec:/runq-exec \
     -dt \
-    $image sh -c "du /;cat"
+    $image sh
 
 sleep 2
 

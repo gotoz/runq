@@ -42,10 +42,7 @@ func main() {
 		return
 	}
 
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, unix.SIGTERM, unix.SIGUSR1, unix.SIGUSR2)
-	go func() { <-ch }()
-
+	signal.Ignore(unix.SIGTERM, unix.SIGUSR1, unix.SIGUSR2)
 	parseCmdline()
 
 	if err := runInit(); err != nil {

@@ -217,14 +217,12 @@ Usage:
 Run a command in a running runq container
 
 Options:
-  -c string
-        TLS certificate file (default "/var/lib/runq/cert.pem")
-  -k string
-        TLS private key file (default "/var/lib/runq/key.pem")
-  -h    print this help
-  -i    keep STDIN open even if not attached
-  -t    allocate a pseudo-TTY
-  -v    print version
+  -c, --cert string   TLS certificate file (default "/var/lib/runq/cert.pem")
+  -k, --key string    TLS private key file (default "/var/lib/runq/key.pem")
+  -h, --help          print this help
+  -i, --interactive   keep STDIN open even if not attached
+  -t, --tty           allocate a pseudo-TTY
+  -v, --version       print version
 
 Environment Variable:
   DOCKER_HOST    specifies the Docker daemon socket.

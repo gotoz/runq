@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/gotoz/runq/pkg/vs"
 	"github.com/mdlayher/vsock"
+	flag "github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -27,12 +27,12 @@ const (
 )
 
 var (
-	help     = flag.Bool("h", false, "print this help")
-	certFile = flag.String("c", certDefault, "TLS certificate file")
-	keyFile  = flag.String("k", keyDefault, "TLS private key file")
-	stdin    = flag.Bool("i", false, "keep STDIN open even if not attached")
-	tty      = flag.Bool("t", false, "allocate a pseudo-TTY")
-	version  = flag.Bool("v", false, "print version")
+	certFile = flag.StringP("cert", "c", certDefault, "TLS certificate file")
+	keyFile  = flag.StringP("key", "k", keyDefault, "TLS private key file")
+	help     = flag.BoolP("help", "h", false, "print this help")
+	stdin    = flag.BoolP("interactive", "i", false, "keep STDIN open even if not attached")
+	tty      = flag.BoolP("tty", "t", false, "allocate a pseudo-TTY")
+	version  = flag.BoolP("version", "v", false, "print version")
 
 	exitCode      = 1
 	gitCommit     string
@@ -42,15 +42,6 @@ var (
 func init() {
 	log.SetFlags(0)
 	log.SetOutput(os.Stderr)
-
-	// support POSIX style flags
-	for i, v := range os.Args {
-		switch v {
-		case "-ti", "-it":
-			os.Args[i] = "-t"
-			os.Args = append(os.Args[:i], append([]string{"-i"}, os.Args[i:]...)...)
-		}
-	}
 }
 
 func usage() {
@@ -74,7 +65,10 @@ func main() {
 }
 
 func mainMain() {
+	flag.CommandLine.SortFlags = false
+	flag.SetInterspersed(false)
 	flag.Usage = usage
+
 	flag.Parse()
 	if *help {
 		flag.Usage()

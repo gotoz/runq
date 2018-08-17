@@ -41,6 +41,14 @@
   revision = "84e90a91acea0f4e51e62bc1a75de18b1fc0790f"
 
 [[projects]]
+  digest = "1:0a52bcb568386d98f4894575d53ce3e456f56471de6897bb8b9de13c33d9340e"
+  name = "github.com/spf13/pflag"
+  packages = ["."]
+  pruneopts = ""
+  revision = "9a97c102cda95a86cec2345a6f09f55a939babf5"
+  version = "v1.0.2"
+
+[[projects]]
   digest = "1:1a290d8a0d01636e2434b6082ad863fe851af1c1b9cbbf0b084f7687613d7222"
   name = "github.com/syndtr/gocapability"
   packages = ["capability"]
@@ -94,6 +102,7 @@
     "github.com/opencontainers/runtime-spec/specs-go",
     "github.com/pkg/errors",
     "github.com/seccomp/libseccomp-golang",
+    "github.com/spf13/pflag",
     "github.com/syndtr/gocapability/capability",
     "github.com/vishvananda/netlink",
     "golang.org/x/crypto/ssh/terminal",

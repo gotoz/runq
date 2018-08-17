@@ -80,14 +80,6 @@ func mainMain() {
 		exitCode = 0
 		return
 	}
-	var cmdConf byte
-	if *stdin {
-		cmdConf |= vs.ConfStdin
-	}
-	if *tty {
-		cmdConf |= vs.ConfTTY
-		terminalState, _ = terminal.MakeRaw(0)
-	}
 	if flag.NArg() < 2 {
 		flag.Usage()
 		return
@@ -136,6 +128,15 @@ func mainMain() {
 	if err := tlsConn.Handshake(); err != nil {
 		log.Print(err)
 		return
+	}
+
+	var cmdConf byte
+	if *stdin {
+		cmdConf |= vs.ConfStdin
+	}
+	if *tty {
+		cmdConf |= vs.ConfTTY
+		terminalState, _ = terminal.MakeRaw(0)
 	}
 
 	buf := append([]byte{vs.ConnControl, cmdConf}, cmdBuf...)

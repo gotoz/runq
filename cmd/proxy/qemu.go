@@ -27,13 +27,41 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		virtioArgs = ",disable-modern=true"
 	}
 
-	commonArgs := []string{
+	cid := fmt.Sprintf("%#x", vmdata.VsockCID)
+
+	var args []string
+	var bus string
+	switch runtime.GOARCH {
+	case "amd64":
+		args = []string{
+			"/usr/bin/qemu-system-x86_64",
+			"-device", "virtio-rng-pci,max-bytes=1024,period=1000" + virtioArgs,
+			"-device", "virtio-9p-pci,fsdev=rootfs_dev,mount_tag=rootfs" + virtioArgs,
+			"-device", "vhost-vsock-pci,guest-cid=" + cid + virtioArgs,
+			"-device", "virtio-serial-pci" + virtioArgs,
+			"-serial", "chardev:console",
+			"-no-acpi",
+		}
+		bus = "pci"
+	case "s390x":
+		args = []string{
+			"/usr/bin/qemu-system-s390x",
+			"-device", "virtio-rng-ccw,max-bytes=1024,period=1000",
+			"-device", "virtio-9p-ccw,fsdev=rootfs_dev,mount_tag=rootfs",
+			"-device", "vhost-vsock-ccw,guest-cid=" + cid,
+			"-device", "virtio-serial-ccw",
+			"-device", "sclpconsole,chardev=console",
+		}
+		bus = "ccw"
+	}
+
+	args = append(args,
 		"-machine", "accel=kvm,usb=off",
 		"-monitor", "none",
 		"-nodefaults",
 		"-name", vmdata.ContainerID[:12],
 		"-enable-kvm",
-		"-cpu", "host" + cpuArgs,
+		"-cpu", "host"+cpuArgs,
 		"-nographic",
 		"-no-reboot",
 		"-no-user-config",
@@ -42,44 +70,13 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		"-initrd", "/initrd",
 		"-msg", "timestamp=on",
 		"-fsdev", "local,id=rootfs_dev,path=/rootfs,security_model=none",
-		"-device", "virtio-serial" + virtioArgs,
-		"-chardev", "socket,path=" + socket + ",id=channel1",
+		"-chardev", "socket,path="+socket+",id=channel1",
 		"-device", "virtserialport,chardev=channel1,name=com.ibm.runq.channel.1",
 		"-smp", strconv.Itoa(vmdata.CPU),
 		"-m", strconv.Itoa(vmdata.Mem),
 		"-append", vm.KernelParameters,
-	}
-
-	cid := fmt.Sprintf("%d", vmdata.VsockCID)
-
-	customArgs := map[string][]string{
-		"amd64": {
-			"/usr/bin/qemu-system-x86_64",
-			"-device", "virtio-rng-pci,max-bytes=1024,period=1000" + virtioArgs,
-			"-device", "virtio-9p-pci,fsdev=rootfs_dev,mount_tag=rootfs" + virtioArgs,
-			"-chardev", "stdio,id=console,signal=off",
-			"-serial", "chardev:console",
-			"-no-acpi",
-			"-device", "vhost-vsock-pci,guest-cid=" + cid + virtioArgs,
-		},
-		"s390x": {
-			"/usr/bin/qemu-system-s390x",
-			"-device", "virtio-rng-ccw,max-bytes=1024,period=1000",
-			"-device", "virtio-9p-ccw,fsdev=rootfs_dev,mount_tag=rootfs",
-			"-chardev", "stdio,id=console,signal=off",
-			"-device", "sclpconsole,chardev=console",
-			"-device", "vhost-vsock-ccw,guest-cid=" + cid,
-		},
-	}
-
-	bus := map[string]string{
-		"amd64": "pci",
-		"s390x": "ccw",
-	}
-
-	arch := runtime.GOARCH
-
-	args := append(customArgs[arch], commonArgs...)
+		"-chardev", "stdio,id=console,signal=off",
+	)
 
 	for i, d := range vmdata.Disks {
 		var writeCache string
@@ -104,17 +101,15 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 
 		id := fmt.Sprintf("disk%d", i)
 		drive := fmt.Sprintf("file=%s,if=none,format=%s,cache=%s,id=%s", d.Path, format, d.Cache, id)
-		device := fmt.Sprintf("virtio-blk-%s,serial=%s,drive=%s,write-cache=%s%s", bus[arch], d.Serial, id, writeCache, virtioArgs)
+		device := fmt.Sprintf("virtio-blk-%s,serial=%s,drive=%s,write-cache=%s%s", bus, d.Serial, id, writeCache, virtioArgs)
 		args = append(args, "-drive", drive)
 		args = append(args, "-device", device)
 	}
 
-	// Append tap devices.
 	// 0:stdin, 1:stdout, 2:stderr, 3:firstTAP, 4:2ndTAP ....
 	var extraFiles []*os.File
 	var fd = 3
 	for i, nw := range vmdata.Networks {
-		// tap network
 		name, err := createTapDevice(nw.MvtName, nw.MvtIndex)
 		if err != nil {
 			return nil, nil, err
@@ -126,7 +121,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		extraFiles = append(extraFiles, f)
 
 		args = append(args,
-			"-device", fmt.Sprintf("virtio-net-%s,netdev=net%d,mac=%s%s", bus[arch], i, nw.MacAddress, virtioArgs),
+			"-device", fmt.Sprintf("virtio-net-%s,netdev=net%d,mac=%s%s", bus, i, nw.MacAddress, virtioArgs),
 			"-netdev", fmt.Sprintf("tap,id=net%d,vhost=on,fd=%d", i, fd),
 		)
 		fd++

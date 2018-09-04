@@ -5,7 +5,7 @@
 set -e
 set -u
 
-PASSPHRASE="`uuidgen`"
+PASSPHRASE=`cat /proc/sys/kernel/random/uuid`
 DAYS=3650
 SUBJ="/emailAddress=ignore@example.com"
 

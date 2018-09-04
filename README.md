@@ -13,7 +13,7 @@ Key differences to other hypervisor-based runtimes:
 * no extra state outside of Docker (no libvirt, no changes to /var/run/...)
 * simple init daemon, no systemd, no busybox
 * no custom guest kernel or custom qemu needed
-* runs on x86_64 and s390x (host kernel >= 4.8 with VHOST_VSOCK support is required)
+* runs on x86_64 and s390x
 
 ## runc vs. runq
 ```
@@ -36,7 +36,7 @@ Key differences to other hypervisor-based runtimes:
 ```
 
 ## Installation
-
+runq requires a host kernel >= 4.8 with KVM and VHOST_VSOCK support enabled.
 The easiest way to build runq and to put all dependencies together is using Docker.
 For fast development cycles a regular build environment might be more
 efficient. For this refer to section *Developing runq* below.
@@ -74,8 +74,6 @@ reload Docker config
 ```
 systemctl reload docker.service
 ```
-Note: To deploy runq on further Docker hosts only `/var/lib/runq` and `/etc/docker/daemon.json`
-must be copied.
 
 #### TLS certificates
 *runq-exec* creates a secure connection between host and VM guests. Users of *runq-exec* are
@@ -88,6 +86,21 @@ Access must be limmited to the root user only.
 Examples of server and client TLS certificates can be created with the script:
 ```
 /var/lib/runq/qemu/mkcerts.sh
+```
+Note: The host must provide sufficient entropy to the VM guests. If there is not enough
+entropie available booting of guests can fail with a timeout error. The entropy that's
+currently available can be checked with:
+```
+cat /proc/sys/kernel/random/entropy_avail
+```
+The number returned should always be greater than 1000.
+
+#### Kernel module vhost_vsock
+The kernel module `vhost_vsock` must be loaded on the host. This can be achieved by creating
+a config file for the systemd-modules-load service: `/etc/modules-load.d/vhost-vsock.conf`:
+```
+# Load vhost_vsock for runq
+vhost_vsock
 ```
 
 ## Usage examples
@@ -217,12 +230,12 @@ Usage:
 Run a command in a running runq container
 
 Options:
-  -c, --cert string   TLS certificate file (default "/var/lib/runq/cert.pem")
-  -k, --key string    TLS private key file (default "/var/lib/runq/key.pem")
-  -h, --help          print this help
-  -i, --interactive   keep STDIN open even if not attached
-  -t, --tty           allocate a pseudo-TTY
-  -v, --version       print version
+  -c, --tlscert string   TLS certificate file (default "/var/lib/runq/cert.pem")
+  -k, --tlskey string    TLS private key file (default "/var/lib/runq/key.pem")
+  -h, --help             print this help
+  -i, --interactive      keep STDIN open even if not attached
+  -t, --tty              allocate a pseudo-TTY
+  -v, --version          print version
 
 Environment Variable:
   DOCKER_HOST    specifies the Docker daemon socket.
@@ -230,10 +243,6 @@ Environment Variable:
 Example:
   runq-exec -ti a6c3b7c bash
 ```
-VirtioVsock requires the `vhost_vsock` kernel module to be loaded on the host.
-runq tries to load it by running `modprobe` before the start of the first VM.
-On some systems the module `vmw_vsock_vmci_transport` must be unload first.
-(`modprobe -r vmw_vsock_vmci_transport`)
 
 ## Qemu and guest Kernel
 runq runs Qemu and Linux Kernel from the `/var/lib/runq/qemu` directory
@@ -402,14 +411,21 @@ E.g. `libseccomp-dev` for Ubuntu or `libseccomp-static` for Fedora
 All files are taken from the Ubuntu 18.04 LTS Docker base image.
     ```
     cd $GOPATH/src/github.com/gotoz/runq
-    make -C qemu
+    make -C qemu all install
     ```
 4. Compile and install runq components to `/var/lib/runq`
     ```
     make install
+    ```
+5. Create TLS certificates
+    ```
+    /var/lib/runq/qemu/mkcerts.sh
+    ```
+6. Adjust file and directory permissions
+    ```
     sudo chown -R root:root /var/lib/runq
     ```
-5. Register runq as Docker runtime with appropriate defaults as shown in section *Installation* above.
+7. Register runq as Docker runtime with appropriate defaults as shown in section *Installation* above.
 
 ## Contributing
 See [CONTRIBUTING](CONTRIBUTING.md) for details.

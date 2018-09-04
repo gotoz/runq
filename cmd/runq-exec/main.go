@@ -22,17 +22,17 @@ import (
 )
 
 const (
-	certDefault = "/var/lib/runq/cert.pem"
-	keyDefault  = "/var/lib/runq/key.pem"
+	tlsCertDefault = "/var/lib/runq/cert.pem"
+	tlsKeyDefault  = "/var/lib/runq/key.pem"
 )
 
 var (
-	certFile = flag.StringP("cert", "c", certDefault, "TLS certificate file")
-	keyFile  = flag.StringP("key", "k", keyDefault, "TLS private key file")
-	help     = flag.BoolP("help", "h", false, "print this help")
-	stdin    = flag.BoolP("interactive", "i", false, "keep STDIN open even if not attached")
-	tty      = flag.BoolP("tty", "t", false, "allocate a pseudo-TTY")
-	version  = flag.BoolP("version", "v", false, "print version")
+	tlsCert = flag.StringP("tlscert", "c", tlsCertDefault, "TLS certificate file")
+	tlsKey  = flag.StringP("tlskey", "k", tlsKeyDefault, "TLS private key file")
+	help    = flag.BoolP("help", "h", false, "print this help")
+	stdin   = flag.BoolP("interactive", "i", false, "keep STDIN open even if not attached")
+	tty     = flag.BoolP("tty", "t", false, "allocate a pseudo-TTY")
+	version = flag.BoolP("version", "v", false, "print version")
 
 	exitCode      = 1
 	gitCommit     string
@@ -85,7 +85,7 @@ func mainMain() {
 		return
 	}
 
-	cert, err := tls.LoadX509KeyPair(*certFile, *keyFile)
+	cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
 	if err != nil {
 		log.Print(err)
 		return
@@ -116,7 +116,7 @@ func mainMain() {
 	}
 	cid := uint32(i)
 
-	// create job request
+	// create job request connection
 	conn, err := vsock.Dial(cid, vs.Port)
 	if err != nil {
 		log.Printf("failed to dial: %v", err)
@@ -125,10 +125,6 @@ func mainMain() {
 	defer conn.Close()
 
 	tlsConn := tls.Client(conn, tlsConfig)
-	if err := tlsConn.Handshake(); err != nil {
-		log.Print(err)
-		return
-	}
 
 	var cmdConf byte
 	if *stdin {
@@ -145,7 +141,7 @@ func mainMain() {
 		return
 	}
 
-	buf = make([]byte, 10)
+	buf = make([]byte, 8)
 	_, err = tlsConn.Read(buf)
 	if err != nil {
 		log.Printf("failed to read job id: %v", err)
@@ -159,7 +155,7 @@ func mainMain() {
 	exitCode = <-done
 }
 
-// wait waits for early execution errors or the final exit code
+// wait waits for early execution errors of the requested job or the final exit code
 func wait(done chan<- int, c *tls.Conn) {
 	buf := make([]byte, 3)
 	n, err := c.Read(buf)
@@ -175,14 +171,15 @@ func wait(done chan<- int, c *tls.Conn) {
 
 	exitCode, err := strconv.Atoi(string(buf[:n]))
 	if err != nil {
-		log.Printf("failed to parse exit code: ", err)
+		log.Printf("failed to parse exit code: %v", err)
 		done <- 1
 		return
 	}
 	done <- exitCode
 }
 
-// execute executes the requested job witch stdin and stdout attached
+// execute creates a second vsock connection to execute the requested job inside the VM.
+// Incomming data is deliverd to STDOUT. STDIN is deliverd to the job process.
 func execute(done chan<- int, tlsConfig *tls.Config, cid uint32, jobid string) {
 	conn, err := vsock.Dial(cid, vs.Port)
 	if err != nil {
@@ -212,8 +209,8 @@ func execute(done chan<- int, tlsConfig *tls.Config, cid uint32, jobid string) {
 	io.Copy(os.Stdout, tlsConn)
 }
 
-// realContainerID tries to find the real container id (64 hex chars) for a given identifier
-// by a REST API call to the Docker engine.
+// realContainerID tries to find the real container id (64 hex characters) for a
+//  given identifier by executing a REST API call to the Docker engine.
 func realContainerID(id string) (string, error) {
 	// taken from: https://github.com/moby/moby/blob/master/daemon/names/names.go
 	var re = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)

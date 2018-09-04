@@ -105,7 +105,7 @@ func mainVsockd() {
 		}
 
 		if addr.ContextID != 2 {
-			log.Print("invalid connection from %v", addr)
+			log.Printf("invalid connection from %s", addr)
 			c.Close()
 			continue
 		}
@@ -153,7 +153,7 @@ func controlConnection(c net.Conn, buf []byte) {
 	// first byte is the config byte
 	cmdConf := buf[0]
 
-	// remaining bytes are the command and arguments separated by \0
+	// remaining bytes are the command and arguments separated by 0x0
 	var args []string
 	for _, v := range bytes.Split(buf[1:], []byte{0}) {
 		args = append(args, string(v))
@@ -165,15 +165,15 @@ func controlConnection(c net.Conn, buf []byte) {
 		CtrlConn: c,
 	}
 
-	jobid := util.RandStr(10)
+	jobid := util.RandStr(8)
 	mu.Lock()
 	jobs[jobid] = job
 	mu.Unlock()
 
 	c.Write([]byte(jobid))
 
-	// cleanup if client does not execute the job within 1 second
-	time.Sleep(time.Second)
+	// remove job request if client does not execute job within 3 seconds
+	time.Sleep(time.Second * 3)
 	mu.Lock()
 	job, exists := jobs[jobid]
 	if exists && !job.Started {
@@ -188,9 +188,8 @@ func executeConnection(c net.Conn, buf []byte) {
 	mu.Lock()
 	job, exists := jobs[id]
 	if !exists || job.Started {
-		// client has sent invalid job id
 		mu.Unlock()
-		log.Printf("invalid jobid:%s", id)
+		log.Printf("received invalid jobid: %s", id)
 		c.Close()
 		return
 	}
@@ -284,14 +283,13 @@ func startCommandNoTTY(c net.Conn, job Job) error {
 		go io.Copy(stdin, c)
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	done := make(chan int)
 	go func() {
 		io.Copy(c, stdout)
-		wg.Done()
+		done <- 1
 	}()
 
 	io.Copy(c, stderr)
-	wg.Wait()
+	<-done
 	return nil
 }

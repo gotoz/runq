@@ -156,15 +156,15 @@ func runInit() error {
 	if err := vsockd.start(); err != nil {
 		shutdown(util.ErrorToRc(err))
 	}
+	if err := ioutil.WriteFile(fmt.Sprintf("/proc/%d/oom_score_adj", vsockd.pid), []byte("-1000"), 0644); err != nil {
+		return err
+	}
 	go vsockd.wait()
 
 	// Start entry point process.
 	entryPoint := forker.forkEntryPoint()
 	if err := entryPoint.start(); err != nil {
 		shutdown(util.ErrorToRc(err))
-	}
-	if entryPoint.pid == 0 {
-		shutdown(1, "coudln't get PID from child")
 	}
 	go entryPoint.wait()
 

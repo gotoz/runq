@@ -121,6 +121,9 @@ func (c *child) start() error {
 		return errors.Errorf("received %d bytes from pipe. Expected: 4", len(buf))
 	}
 	c.pid = int(binary.BigEndian.Uint32(buf))
+	if c.pid < 2 {
+		return errors.Errorf("received invalid PID from pipe")
+	}
 	return nil
 }
 

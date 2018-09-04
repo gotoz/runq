@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
@@ -228,15 +227,9 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 	major, minor, err := majorMinor("/sys/class/misc/vsock/dev")
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
-			cmd := exec.Command("modprobe", "vhost_vsock")
-			if err := cmd.Run(); err != nil {
-				return err
-			}
-			major, minor, err = majorMinor("/sys/class/misc/vsock/dev")
+			return fmt.Errorf("Can't access vsock decvice. Is kernel module 'vhost_vsock' loaded?")
 		}
-		if err != nil {
-			return err
-		}
+		return err
 	}
 	if major == 0 || minor == 0 {
 		return fmt.Errorf("can't get vsock major/minor device numbers")

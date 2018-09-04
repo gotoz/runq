@@ -81,22 +81,18 @@ func DirExists(path string) bool {
 
 // Insmod loads a kernel module.
 func Insmod(path string, args []string) error {
-	fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+	f, err := os.Open(path)
 	if err != nil {
-		return errors.Wrapf(err, "insmod %s", path)
+		return fmt.Errorf("insmod %s failed: %v", path, err)
 	}
-	defer unix.Close(fd)
+	defer f.Close()
 
-	var p1 *byte
-	p1, err = unix.BytePtrFromString(strings.Join(args, " "))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	_, _, e1 := unix.Syscall(unix.SYS_FINIT_MODULE, uintptr(fd), uintptr(unsafe.Pointer(p1)), 0)
-	if e1 == 0 || e1 == unix.EEXIST {
+	a2 := []byte(strings.Join(args, " ") + "\x00")
+	_, _, errno := unix.Syscall(unix.SYS_FINIT_MODULE, uintptr(f.Fd()), uintptr(unsafe.Pointer(&a2[0])), 0)
+	if errno == 0 || errno == unix.EEXIST {
 		return nil
 	}
-	return errors.Errorf("insmod %s: %v", path, os.NewSyscallError("SYS_FINIT_MODULE", e1))
+	return fmt.Errorf("insmod %s failed: %v", path, os.NewSyscallError("SYS_FINIT_MODULE", errno))
 }
 
 // MajorMinor returns major and minor device number for a given syspath.

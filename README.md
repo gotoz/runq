@@ -397,7 +397,6 @@ For fast development cycles runq can be build on the host as follows:
 1. Prerequisites:
 * Docker >= 17.09.x-ce
 * Go >= 1.11
-* GOPATH must be set
 * `/var/lib/runq` must be writable by the current user
 * [Libseccomp](https://github.com/seccomp/libseccomp/) static library.
 E.g. `libseccomp-dev` for Ubuntu or `libseccomp-static` for Fedora

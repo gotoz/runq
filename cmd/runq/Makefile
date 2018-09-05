@@ -1,11 +1,12 @@
 include ../../make.rules
 
+export GOPATH := $(shell go env GOPATH | cut -d: -f1)
+
 RUNC_COMMIT := 9f9c96235cc97674e935002fc3d78361b696a69e
 RUNC_PATH := $(GOPATH)/src/github.com/opencontainers/runc
 EXTRA_LDFLAGS := "-X main.runqCommit=$(GIT_COMMIT)"
 
 runq: $(RUNC_PATH)/.git $(shell find . -type f ! -name runq)
-	@echo check GOPATH; test -n "$(GOPATH)"
 	cd $(RUNC_PATH) && git clean -fd
 	cd $(RUNC_PATH) && git checkout -q -f $(RUNC_COMMIT)
 	cd $(RUNC_PATH) && git apply $(CURDIR)/runc-to-runq.patch
@@ -14,7 +15,6 @@ runq: $(RUNC_PATH)/.git $(shell find . -type f ! -name runq)
 	cp -f $(RUNC_PATH)/runc $(CURDIR)/runq
 
 $(RUNC_PATH)/.git:
-	@echo check GOPATH; test -n "$(GOPATH)"
 	@echo Error: RunC source not found
 	@echo To download RunC source: '"go get -d github.com/opencontainers/runc"'; false
 

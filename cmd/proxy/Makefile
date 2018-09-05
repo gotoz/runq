@@ -3,7 +3,6 @@ include ../../make.rules
 LD_FLAGS := -ldflags="-X main.gitCommit=$(GIT_COMMIT)"
 
 proxy: $(shell find . -name '*.go')
-	@echo check GOPATH; test -n "$(GOPATH)"
 	CGO_ENABLED=0 $(GO) build -tags netgo $(LD_FLAGS)
 
 install: proxy

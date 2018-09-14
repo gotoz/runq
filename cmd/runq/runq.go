@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -46,6 +48,8 @@ var proxyCapabilities = []string{
 	"CAP_NET_ADMIN",
 	"CAP_SYS_ADMIN",
 }
+
+var reUUID = regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -246,7 +250,7 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 	if err != nil {
 		return err
 	}
-	if major == 0 || minor == 0 {
+	if major == 0 {
 		return fmt.Errorf("can't get vhost-vsock major/minor device number")
 	}
 	spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
@@ -261,6 +265,73 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 		UID:      &id,
 		GID:      &id,
 	})
+
+	// /dev/vfio
+	for i, v := range spec.Process.Env {
+		if strings.HasPrefix(v, "RUNQ_APUUID=") {
+			uuid := strings.SplitN(v, "=", 2)[1]
+			if !reUUID.MatchString(uuid) {
+				return fmt.Errorf("%q: invalid UUID", v)
+			}
+			spec.Process.Env = append(spec.Process.Env[:i], spec.Process.Env[i+1:]...)
+
+			// /dev/vfio/vfio
+			devnode := "/dev/vfio/vfio"
+			major, minor, err := majorMinor("/sys/class/misc/vfio/dev")
+			if err != nil {
+				return err
+			}
+			if major == 0 {
+				return fmt.Errorf("can't get major/minor number of %s", devnode)
+			}
+
+			spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
+				Allow: true, Type: "c", Major: iPtr(major), Minor: iPtr(minor), Access: "rwm",
+			})
+			spec.Linux.Devices = append(spec.Linux.Devices, specs.LinuxDevice{
+				Path:     devnode,
+				Type:     "c",
+				Major:    major,
+				Minor:    minor,
+				FileMode: &filemode,
+				UID:      &id,
+				GID:      &id,
+			})
+
+			// /dev/vfio/<nr>
+			devpath := "/sys/devices/vfio_ap/matrix/" + uuid
+			vmdata.Linux.APDevice = devpath
+
+			s, err := os.Readlink(devpath + "/iommu_group")
+			if err != nil {
+				return err
+			}
+			nr := filepath.Base(s)
+			devnode = "/dev/vfio/" + nr
+			major, minor, err = majorMinor(fmt.Sprintf("/sys/devices/virtual/vfio/%s/dev", nr))
+			if err != nil {
+				return err
+			}
+			if major == 0 {
+				return fmt.Errorf("can't get major/minor number of %s", devnode)
+			}
+
+			spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
+				Allow: true, Type: "c", Major: iPtr(major), Minor: iPtr(minor), Access: "rwm",
+			})
+			spec.Linux.Devices = append(spec.Linux.Devices, specs.LinuxDevice{
+				Path:     devnode,
+				Type:     "c",
+				Major:    major,
+				Minor:    minor,
+				FileMode: &filemode,
+				UID:      &id,
+				GID:      &id,
+			})
+
+			break
+		}
+	}
 
 	// /dev/runq/...
 	for _, d := range spec.Linux.Devices {

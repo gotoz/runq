@@ -132,6 +132,12 @@ func runInit() error {
 		return err
 	}
 
+	if vmdata.APDevice != "" {
+		if err := setupAPDevice(); err != nil {
+			return err
+		}
+	}
+
 	if err := chroot("/rootfs"); err != nil {
 		return err
 	}
@@ -314,6 +320,26 @@ func setSysctl(vmdataSysctl map[string]string) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func setupAPDevice() error {
+	if _, err := os.Stat("/sys/bus/ap/devices"); err != nil {
+		return err
+	}
+	files, _ := filepath.Glob("/sys/bus/ap/devices/card*")
+	if len(files) == 0 {
+		return fmt.Errorf("no ap device found")
+	}
+
+	if err := loadKernelModules("zcrypt", "/rootfs"); err != nil {
+		return err
+	}
+
+	if err := os.Chmod("/dev/z90crypt", 0666); err != nil {
+		return fmt.Errorf("can't chmod /dev/z90crypt: %v", err)
+	}
+
 	return nil
 }
 

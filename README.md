@@ -396,6 +396,17 @@ hypervisors such as VMware might not work as expected or might not work at all.
 However to try out runq in a VM guest the (experimental) runq runtime configuration parameter
 `--nestedvm` can be used. It modifies the parameters of the Qemu process.
 
+## AP adapter passthrough (s390x only)
+AP devices provide cryptographic functions to all CPUs assigned to a linux system running in
+an IBM Z system LPAR. AP devices can be made available to a runq container by passing a VFIO mediated
+device from the host through Qemu into the runq VM guest. The environment variable RUNQ_APUUID spcecifies
+the mediated device UUID. This will also load the required zcrypt kernel modules. E.g.:
+```
+docker run --runtime runq -e RUNQ_APUUID=b34543ee-496b-4769-8312-83707033e1de ...
+```
+For details on how to setup mediated devices on the host see
+https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/s390/vfio-ap.txt
+
 ## Developing runq
 For fast development cycles runq can be build on the host as follows:
 1. Prerequisites:

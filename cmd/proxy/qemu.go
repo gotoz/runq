@@ -106,6 +106,10 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		args = append(args, "-device", device)
 	}
 
+	if vmdata.APDevice != "" {
+		args = append(args, "-device", "vfio-ap,sysfsdev="+vmdata.APDevice)
+	}
+
 	// 0:stdin, 1:stdout, 2:stderr, 3:firstTAP, 4:2ndTAP ....
 	var extraFiles []*os.File
 	var fd = 3

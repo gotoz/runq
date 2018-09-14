@@ -128,6 +128,7 @@ type Process struct {
 
 // Linux contains the configuration of the VM.
 type Linux struct {
+	APDevice    string
 	ContainerID string
 	CPU         int
 	Disks       []Disk

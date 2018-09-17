@@ -83,63 +83,64 @@ func mainVsockd() {
 			log.Printf("accept failed: %v", err)
 			continue
 		}
+		go handleConnection(conn)
+	}
+}
 
-		c, ok := conn.(*tls.Conn)
-		if !ok {
-			log.Printf("invalid connection type: %T", conn)
-			c.Close()
-			continue
-		}
+func handleConnection(conn net.Conn) {
+	c, ok := conn.(*tls.Conn)
+	if !ok {
+		log.Printf("invalid connection type: %T", conn)
+		c.Close()
+		return
+	}
 
-		if err := c.Handshake(); err != nil {
-			log.Print(err)
-			c.Close()
-			continue
-		}
+	if err := c.Handshake(); err != nil {
+		log.Print(err)
+		c.Close()
+		return
+	}
 
-		addr, ok := c.RemoteAddr().(*vsock.Addr)
-		if !ok {
-			log.Printf("invalid remote address type: %T", c.RemoteAddr())
-			c.Close()
-			continue
-		}
+	addr, ok := c.RemoteAddr().(*vsock.Addr)
+	if !ok {
+		log.Printf("invalid remote address type: %T", c.RemoteAddr())
+		c.Close()
+		return
+	}
 
-		if addr.ContextID != 2 {
-			log.Printf("invalid connection from %s", addr)
-			c.Close()
-			continue
-		}
+	if addr.ContextID != 2 {
+		log.Printf("invalid connection from %s", addr)
+		c.Close()
+		return
+	}
 
-		// TODO:
-		//   c.SetReadDeadline()
-		//   requires go1.11+ and latest version of mdlayher/vsock
-		go func() {
-			buf := make([]byte, 4096)
+	// TODO:
+	//   c.SetReadDeadline()
+	//   requires go1.11+ and latest version of mdlayher/vsock
+	buf := make([]byte, 4096)
 
-			n, err := c.Read(buf)
-			if err != nil {
-				log.Printf("read failed: %v", err)
-				c.Close()
-				return
-			}
+	n, err := c.Read(buf)
+	if err != nil {
+		log.Printf("read failed: %v", err)
+		c.Close()
+		return
+	}
 
-			if n < 2 {
-				log.Print("message too short")
-				c.Close()
-				return
-			}
+	if n < 2 {
+		log.Print("message too short")
+		c.Close()
+		return
+	}
 
-			// first byte determines the connection type
-			switch buf[0] {
-			case vs.ConnControl:
-				controlConnection(c, buf[1:n])
-			case vs.ConnExecute:
-				executeConnection(c, buf[1:n])
-			default:
-				log.Printf("invalid connection type %#x\n", buf[0])
-				c.Close()
-			}
-		}()
+	// first byte determines the connection type
+	switch buf[0] {
+	case vs.ConnControl:
+		controlConnection(c, buf[1:n])
+	case vs.ConnExecute:
+		executeConnection(c, buf[1:n])
+	default:
+		log.Printf("invalid connection type %#x\n", buf[0])
+		c.Close()
 	}
 }
 

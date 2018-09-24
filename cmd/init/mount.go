@@ -31,7 +31,7 @@ func mountInit() error {
 			Data:   "mode=0755",
 		},
 		{
-			Source: "sys",
+			Source: "sysfs",
 			Target: "/sys",
 			Fstype: "sysfs",
 			Flags:  unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
@@ -56,7 +56,7 @@ func mountRootfs(extraMounts []vm.Mount) error {
 			Flags:  unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
 		},
 		{
-			Source: "sys",
+			Source: "sysfs",
 			Target: "/rootfs/sys",
 			Fstype: "sysfs",
 			Flags:  unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,

@@ -106,10 +106,6 @@ func runInit() error {
 		return err
 	}
 
-	if err := mountRemount(); err != nil {
-		return err
-	}
-
 	// Remove empty mountpoint.
 	if err := os.Remove("/rootfs/qemu"); err != nil && !os.IsNotExist(err) {
 		return errors.WithStack(err)

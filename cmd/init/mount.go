@@ -109,27 +109,6 @@ func mountRootfs(extraMounts []vm.Mount) error {
 	return mount(mounts)
 }
 
-func mountRemount() error {
-	if !util.DirExists("/rootfs/.runq") {
-		return nil
-	}
-	mounts := []vm.Mount{
-		{
-			Source: "/rootfs/.runq",
-			Target: "/rootfs/.runq",
-			Fstype: "",
-			Flags:  unix.MS_BIND,
-		},
-		{
-			Source: "/rootfs/.runq",
-			Target: "/rootfs/.runq",
-			Fstype: "",
-			Flags:  unix.MS_REMOUNT | unix.MS_BIND | unix.MS_RDONLY | unix.MS_NOSUID | unix.MS_NODEV,
-		},
-	}
-	return mount(mounts)
-}
-
 func mountRootfsCgroups() error {
 	if !util.FileExists("/proc/cgroups") {
 		return nil

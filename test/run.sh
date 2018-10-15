@@ -11,7 +11,7 @@ for f in $@; do
         cat $log
         echo -e "#\n# END LOG $(basename $f)\n#\n"
     fi
-    grep -E '^test (succeeded|failed|skipped)' $log
+    grep -E '^test ' $log
     rm -f $log
 done
 

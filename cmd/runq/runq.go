@@ -288,19 +288,34 @@ func parseTmfpsMount(m specs.Mount) (int, string) {
 	for _, o := range m.Options {
 		switch o {
 		case "default":
-		case "rw":
 		case "noatime":
 			flags |= syscall.MS_NOATIME
+		case "atime":
+			flags &^= syscall.MS_NOATIME
 		case "nodiratime":
 			flags |= syscall.MS_NODIRATIME
+		case "diratime":
+			flags &^= syscall.MS_NODIRATIME
 		case "nodev":
 			flags |= syscall.MS_NODEV
+		case "dev":
+			flags &^= syscall.MS_NODEV
 		case "noexec":
 			flags |= syscall.MS_NOEXEC
+		case "exec":
+			flags &^= syscall.MS_NOEXEC
 		case "nosuid":
 			flags |= syscall.MS_NOSUID
+		case "suid":
+			flags &^= syscall.MS_NOSUID
+		case "strictatime":
+			flags |= syscall.MS_STRICTATIME
+		case "nostrictatime":
+			flags &^= syscall.MS_STRICTATIME
 		case "ro":
 			flags |= syscall.MS_RDONLY
+		case "rw":
+			flags &^= syscall.MS_RDONLY
 		case "rprivate", "rshared", "rslave", "runbindable":
 		default:
 			dataArray = append(dataArray, o)

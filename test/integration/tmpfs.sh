@@ -16,15 +16,30 @@ checkrc $? 2 "$comment"
 #
 #
 #
-comment="set tmpfs with custom arguments"
+comment="set tmpfs with custom arguments (1)"
 docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
     --tmpfs /tmp/tmp:size=5M,noatime,noexec,nodev \
     $image  \
-    sh -c 'grep -q "tmpfs /tmp/tmp tmpfs rw,nosuid,nodev,noexec,noatime,size=5120k" /proc/mounts'
+    sh -c 'grep -q "tmpfs /tmp/tmp tmpfs rw,nosuid,nodev,noexec,noatime,size=5120k 0 0" /proc/mounts'
+
+checkrc $? 0 "$comment"
+
+#
+#
+#
+comment="set tmpfs with custom arguments (2)"
+docker run \
+    --runtime runq \
+    --name $(rand_name) \
+    --rm \
+    --tmpfs /foo:ro,dev,exec,suid,strictatime \
+    $image  \
+    sh -c 'grep -q "tmpfs /foo tmpfs ro 0 0" /proc/mounts'
 
 checkrc $? 0 "$comment"
 
 myexit
+

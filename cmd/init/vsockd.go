@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -20,23 +21,26 @@ import (
 	"github.com/gotoz/runq/pkg/vs"
 	"github.com/kr/pty"
 	"github.com/mdlayher/vsock"
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
-type Job struct {
-	Cmd      *exec.Cmd
-	Conf     byte
-	CtrlConn net.Conn
-	Started  bool
+type jobRequest struct {
+	cmd      *exec.Cmd
+	conf     byte
+	ctrlConn net.Conn
+	started  bool
 }
 
-var jobs map[string]Job
-var mu sync.Mutex
+type jobDB struct {
+	sync.Mutex
+	m map[string]jobRequest
+}
+
+var jobs jobDB
 
 func mainVsockd() {
 	signal.Ignore(unix.SIGTERM, unix.SIGUSR1, unix.SIGUSR2)
-	jobs = make(map[string]Job)
+	jobs = jobDB{m: make(map[string]jobRequest)}
 
 	rd := os.NewFile(uintptr(3), "rd")
 	if rd == nil {
@@ -44,23 +48,23 @@ func mainVsockd() {
 	}
 	buf, err := ioutil.ReadAll(rd)
 	if err != nil {
-		log.Fatalf("failed to read key from pipe: %v", err)
+		log.Fatalf("failed to read from pipe: %v", err)
 	}
 	rd.Close()
 
 	certs := bytes.Split(buf, []byte{0})
 	if len(certs) != 3 {
-		log.Fatal("failed to read PEMs from pipe")
+		log.Fatal("date read from pipe is invalid")
 	}
 
 	certpool := x509.NewCertPool()
 	if !certpool.AppendCertsFromPEM(certs[0]) {
-		log.Fatalf("can't parse CA pem")
+		log.Fatalf("failed to parse CA certificate")
 	}
 
 	cert, err := tls.X509KeyPair(certs[1], certs[2])
 	if err != nil {
-		log.Fatalf("can't parse certificate: %v", err)
+		log.Fatalf("failed to parse certificate/key pair: %v", err)
 	}
 
 	config := &tls.Config{
@@ -80,7 +84,7 @@ func mainVsockd() {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			log.Printf("accept failed: %v", err)
+			log.Printf("accept connection failed: %v", err)
 			continue
 		}
 		go handleConnection(conn)
@@ -109,7 +113,7 @@ func handleConnection(conn net.Conn) {
 	}
 
 	if addr.ContextID != 2 {
-		log.Printf("invalid connection from %s", addr)
+		log.Printf("invalid context ID from %s", addr)
 		c.Close()
 		return
 	}
@@ -146,7 +150,7 @@ func handleConnection(conn net.Conn) {
 
 func controlConnection(c net.Conn, buf []byte) {
 	if len(buf) < 2 {
-		log.Print("invalid message")
+		log.Print("controlConnection: not enough data")
 		c.Close()
 		return
 	}
@@ -160,53 +164,53 @@ func controlConnection(c net.Conn, buf []byte) {
 		args = append(args, string(v))
 	}
 
-	job := Job{
-		Cmd:      exec.Command(args[0], args[1:]...),
-		Conf:     cmdConf,
-		CtrlConn: c,
+	job := jobRequest{
+		cmd:      exec.Command(args[0], args[1:]...),
+		conf:     cmdConf,
+		ctrlConn: c,
 	}
 
 	jobid := util.RandStr(8)
-	mu.Lock()
-	jobs[jobid] = job
-	mu.Unlock()
-
+	jobs.Lock()
+	jobs.m[jobid] = job
+	jobs.Unlock()
 	c.Write([]byte(jobid))
 
-	// remove job request if client does not execute job within 3 seconds
-	time.Sleep(time.Second * 3)
-	mu.Lock()
-	job, exists := jobs[jobid]
-	if exists && !job.Started {
-		delete(jobs, jobid)
+	// remove job request if it hasn't been started within 1 second
+	time.Sleep(time.Second)
+	jobs.Lock()
+	job, exists := jobs.m[jobid]
+	if exists && !job.started {
+		delete(jobs.m, jobid)
 		c.Close()
+		log.Printf("removed unused job request %s", jobid)
 	}
-	mu.Unlock()
+	jobs.Unlock()
 }
 
 func executeConnection(c net.Conn, buf []byte) {
 	id := string(buf)
-	mu.Lock()
-	job, exists := jobs[id]
-	if !exists || job.Started {
-		mu.Unlock()
-		log.Printf("received invalid jobid: %s", id)
+	jobs.Lock()
+	job, exists := jobs.m[id]
+	if !exists || job.started {
+		jobs.Unlock()
+		log.Printf("received invalid jobid: %q", id)
 		c.Close()
 		return
 	}
-	job.Started = true
-	jobs[id] = job
-	mu.Unlock()
+	job.started = true
+	jobs.m[id] = job
+	jobs.Unlock()
 
 	var err error
-	if job.Conf&vs.ConfTTY > 0 {
+	if job.conf&vs.ConfTTY > 0 {
 		err = startCommandWithTTY(c, job)
 	} else {
 		err = startCommandNoTTY(c, job)
 	}
 
 	if err == nil {
-		err = job.Cmd.Wait()
+		err = job.cmd.Wait()
 	}
 
 	// process exit message and return code
@@ -218,15 +222,15 @@ func executeConnection(c net.Conn, buf []byte) {
 	}
 
 	buf = []byte(strconv.Itoa(int(rc)))
-	if _, err := job.CtrlConn.Write(buf); err != nil {
-		log.Printf("failed to write  rc: %v", err)
+	if _, err := job.ctrlConn.Write(buf); err != nil {
+		log.Printf("failed to write exit code: %v", err)
 	}
 
 	// wait for acknowledge message
 	done := make(chan int, 1)
 	go func() {
 		buf := make([]byte, 1)
-		job.CtrlConn.Read(buf)
+		job.ctrlConn.Read(buf)
 		done <- 1
 	}()
 	select {
@@ -234,53 +238,53 @@ func executeConnection(c net.Conn, buf []byte) {
 	case <-time.After(time.Second * 3):
 	}
 
-	mu.Lock()
-	job, exists = jobs[id]
+	jobs.Lock()
+	job, exists = jobs.m[id]
 	if exists {
-		job.CtrlConn.Close()
+		job.ctrlConn.Close()
 		c.Close()
-		delete(jobs, id)
+		delete(jobs.m, id)
 	}
-	mu.Unlock()
+	jobs.Unlock()
 }
 
-func startCommandWithTTY(c net.Conn, job Job) error {
-	ptmx, err := pty.Start(job.Cmd)
+func startCommandWithTTY(c net.Conn, job jobRequest) error {
+	ptmx, err := pty.Start(job.cmd)
 	if err != nil {
 		return err
 	}
 	defer ptmx.Close()
 
-	if job.Conf&vs.ConfStdin > 0 {
+	if job.conf&vs.ConfStdin > 0 {
 		go io.Copy(ptmx, c)
 	}
 	io.Copy(c, ptmx)
 	return nil
 }
 
-func startCommandNoTTY(c net.Conn, job Job) error {
+func startCommandNoTTY(c net.Conn, job jobRequest) error {
 	var stdin io.WriteCloser
 	var stdout, stderr io.ReadCloser
 	var err error
 
-	if job.Conf&vs.ConfStdin > 0 {
-		stdin, err = job.Cmd.StdinPipe()
+	if job.conf&vs.ConfStdin > 0 {
+		stdin, err = job.cmd.StdinPipe()
 		if err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("create pipe STDIN failed: %v", err)
 		}
 	}
-	if stdout, err = job.Cmd.StdoutPipe(); err != nil {
-		return errors.WithStack(err)
+	if stdout, err = job.cmd.StdoutPipe(); err != nil {
+		return fmt.Errorf("create pipe STDOUT failed: %v", err)
 	}
-	if stderr, err = job.Cmd.StderrPipe(); err != nil {
-		return errors.WithStack(err)
+	if stderr, err = job.cmd.StderrPipe(); err != nil {
+		return fmt.Errorf("create pipe STDERR failed: %v", err)
 	}
 
-	if err := job.Cmd.Start(); err != nil {
+	if err := job.cmd.Start(); err != nil {
 		return err
 	}
 
-	if job.Conf&vs.ConfStdin > 0 {
+	if job.conf&vs.ConfStdin > 0 {
 		go io.Copy(stdin, c)
 	}
 

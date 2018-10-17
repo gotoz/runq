@@ -50,7 +50,7 @@ RUN cp -a --parents \
     /lib/modules \
     /lib/x86_64-linux-gnu \
     /usr/bin/qemu-system-x86_64 \
-    /usr/lib/ipxe/qemu \
+    /usr/lib/ipxe \
     /usr/lib/x86_64-linux-gnu \
     /usr/share/qemu \
     /usr/share/seabios \

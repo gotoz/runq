@@ -77,21 +77,24 @@ type Network struct {
 
 // Disk defines a disk.
 type Disk struct {
-	Path   string
-	Dir    string
 	Cache  string
-	Serial string
+	Dir    string
 	Fstype string
+	ID     string
+	Mount  bool
+	Path   string
+	Serial string
 	Type   Disktype
 }
 
 // Mount defines a mount point.
 type Mount struct {
+	Data   string
+	Flags  int
+	Fstype string
+	ID     string
 	Source string
 	Target string
-	Fstype string
-	Flags  int
-	Data   string
 }
 
 // User specifies user information for the VM process.

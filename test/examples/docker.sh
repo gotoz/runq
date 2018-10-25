@@ -23,7 +23,7 @@ docker run \
     -p $port:2375 \
     --name $name \
     -d \
-    --volume $disk:/dev/disk/writethrough/ext4/docker \
+    --volume $disk:/dev/runq/$(uuid)/writethrough/ext4/docker \
     --security-opt seccomp=unconfined \
     --cap-add net_admin \
     --cap-add sys_admin \

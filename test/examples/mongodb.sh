@@ -28,7 +28,7 @@ docker run \
     --runtime runq \
     --name $name \
     -e RUNQ_MEM=512 \
-    -v $disk:/dev/disk/writeback/xfs/data/db \
+    -v $disk:/dev/runq/$(uuid)/writeback/xfs/data/db \
     -d \
     $image \
       mongod --smallfiles --noprealloc --logappend --dbpath /data/db

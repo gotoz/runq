@@ -161,16 +161,13 @@ func mount(mounts []vm.Mount) error {
 		if util.FileExists(m.Target) {
 			return errors.Errorf("invalid path: %v", m.Target)
 		}
-
 		if !util.DirExists(m.Target) {
 			if err := os.MkdirAll(m.Target, 0755); err != nil {
 				return err
 			}
 		}
-
 		if err := unix.Mount(m.Source, m.Target, m.Fstype, uintptr(m.Flags), m.Data); err != nil {
-			err = fmt.Errorf("Mount src:%s dst:%s fs:%s %v", m.Source, m.Target, m.Fstype, err)
-			return errors.WithStack(err)
+			return fmt.Errorf("Mount failed: src:%s dst:%s fs:%s id:%s reason: %v", m.Source, m.Target, m.Fstype, m.ID, err)
 		}
 	}
 	return nil

@@ -23,7 +23,7 @@ docker run \
     -e RUNQ_MEM=512 \
     -e RUNQ_CPU=2 \
     -e POSTGRES_PASSWORD=$PGPASSWORD \
-    -v $disk:/dev/disk/writeback/ext4/var/lib/postgresql \
+    -v $disk:/dev/runq/$(uuid)/writeback/ext4/var/lib/postgresql \
     -d \
     $image
 

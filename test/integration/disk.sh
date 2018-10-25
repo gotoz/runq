@@ -58,29 +58,29 @@ docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
-    -v $qcow1:/dev/disk/writeback/ext2/$mnt1 \
-    --device $dev2:/dev/disk/none/ext4/$mnt2 \
-    -v $dev3:/dev/disk/unsafe/xfs/$mnt3 \
+    -v $qcow1:/dev/runq/$(uuid)/writeback/ext2/$mnt1 \
+    --device $dev2:/dev/runq/a/none/ext4/$mnt2 \
+    -v $dev3:/dev/runq/1/unsafe/xfs/$mnt3 \
     $image \
     sh -c "$cmd"
 
 checkrc $? 0 "$comment"
 
+#
+#
+#
 comment="re-mount and verify qcow2, raw file and block device"
 cmd="cat $mnt1/testfile.md5"
 cmd="$cmd && md5sum -c $mnt1/testfile.md5"
 cmd="$cmd && set -x; md5sum -c $mnt1/testfile.md5 2>&1 | grep ': OK' | wc -l | xargs test 3 -eq "
 
-#
-#
-#
 docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
-    -v $qcow1:/dev/disk/writeback/ext2/$mnt1 \
-    --device $dev2:/dev/disk/none/ext4/$mnt2 \
-    -v $dev3:/dev/disk/unsafe/xfs/$mnt3 \
+    -v $qcow1:/dev/runq/$(uuid)/writeback/ext2/$mnt1 \
+    --device $dev2:/dev/runq/a/none/ext4/$mnt2 \
+    -v $dev3:/dev/runq/b/unsafe/xfs/$mnt3 \
     $image \
     sh -c "$cmd"
 
@@ -97,8 +97,28 @@ docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
-    --device /dev/ram1:/dev/disk/none/none/a \
-    --device /dev/ram2:/dev/disk/none/none/b \
+    --device /dev/ram1:/dev/runq/$(uuid)/none \
+    --device /dev/ram2:/dev/runq/$(uuid)/none/ext4 \
+    $image \
+    sh -c "$cmd"
+
+checkrc $? 0 "$comment"
+
+#
+#
+#
+comment="symlinks"
+
+id1=$(uuid)
+id2=$(uuid)
+cmd="ls -l /dev/disk/by-runq-id/*; test -L /dev/disk/by-runq-id/$id1 && test -L /dev/disk/by-runq-id/$id2; exit \$?"
+
+docker run \
+    --runtime runq \
+    --name $(rand_name) \
+    --rm \
+    --device /dev/ram1:/dev/runq/$id1/none \
+    --device /dev/ram2:/dev/runq/$id2/none/ext4 \
     $image \
     sh -c "$cmd"
 

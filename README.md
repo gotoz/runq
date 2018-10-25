@@ -132,7 +132,7 @@ docker run \
     -e RUNQ_CPU=2 \
     -e RUNQ_MEM=512 \
     -e POSTGRES_PASSWORD=mysecret \
-    -v $PWD/data.img:/dev/disk/writeback/ext4/var/lib/postgresql \
+    -v $PWD/data.img:/dev/runq/0001/writeback/ext4/var/lib/postgresql \
     -d postgres:alpine
 
 sleep 10
@@ -280,37 +280,39 @@ Environment variables have priority over global options.
 
 ## Storage
 Extra storage can be added in the form of Qcow2 images, raw file images or
-regular block devices. Devices will be mounted automatically if they contain a
-supported filesytem and a mountpoint has been specified.
+regular block devices. Storage devices will be mounted automatically if
+a filesytem and a mount point has been specified.
 Supported filesystems are ext2, ext3, ext4, xfs and btrfs.
-
-The mount point must be prefixed with `/dev/disk` and one of the
-supported cache types (writeback, writethrough, none or unsafe).
-See man qemu(1) for details.
+Cache type must be writeback, writethrough, none or unsafe.
+See man qemu(1) for details about different cache types.
 
 Syntax:
 ```
---volume <image  name>:/dev/disk/<cache type>/<filesystem type>/<mountpoint>
---device <device name>:/dev/disk/<cache type>/<filesystem type>/<mountpoint>
+--volume <image  name>:/dev/runq/<id>/<cache type>[/<filesystem type>/<mount point>]
+--device <device name>:/dev/runq/<id>/<cache type>[/<filesystem type>/<mount point>]
+```
+
+`<id>` is used to create symbolic links inside the VM guest that point to the Qemu Virtio device
+files. The `id` can be any character string that matches the regex pattern `"^[a-zA-Z0-9-_]{1,36}$"`
+but it must be unique within a container.
+```
+/dev/disk/by-runq-id/0001 -> ../../vda
 ```
 
 ### Storage examples
-Mount the existing Qcow image  `/data.qcow2` that contains an xfs filesystem
-to `/mnt/data`.
+Mount the existing Qcow image `/data.qcow2` with xfs filesystem to `/mnt/data`:
 ```
-docker run --volume /data.qcow2:/dev/disk/writeback/xfs/mnt/data ...
-```
-
-Attach the host device `/dev/sdb1`  with an ext4 filesystem to `/mnt/data2`.
-```
-docker run --device /dev/sdb1:/dev/disk/writethrough/ext4/mnt/data2 ...
+docker run -v /data.qcow2:/dev/runq/0001/writeback/xfs/mnt/data ...
 ```
 
-Attach the host device `/dev/sdb2` but disable outomatic mounting. Use `none` as
-filesystem and any uniq ID to distingish multiple devices. The device
-will show up as `/dev/vda` inside the container.
+Attach the host device `/dev/sdb1` formatted with ext4 to `/mnt/data2`:
 ```
-docker run --device /dev/sdb2:/dev/disk/writethrough/none/0001 ...
+docker run --device /dev/sdb1:/dev/runq/0002/writethrough/ext4/mnt/data2 ...
+```
+
+Attach the host device `/dev/sdb2` without mounting:
+```
+docker run --device /dev/sdb2:/dev/runq/0003/writethrough ...
 ```
 
 ## Capabilities

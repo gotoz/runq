@@ -31,7 +31,7 @@ for fs in ext2 ext3 ext4 xfs; do
         --runtime runq \
         --name $(rand_name) \
         --rm \
-        -v $dev:/dev/disk/writeback/$fs/$mnt \
+        -v $dev:/dev/runq/$(uuid)/writeback/$fs/$mnt \
         $image \
         sh -c "$cmd"
 
@@ -39,9 +39,9 @@ for fs in ext2 ext3 ext4 xfs; do
 done
 
 #
-# FS = none
 #
-comment="attache disk without FS (none)"
+#
+comment="attache disk with no filesystem"
 cmd="ls -l /dev/vda"
 
 dd if=/dev/zero of=$dev bs=1M count=100 >/dev/null
@@ -50,27 +50,9 @@ docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
-    -v $dev:/dev/disk/writeback/none/0001 \
+    -v $dev:/dev/runq/$(uuid)/writeback \
     $image \
     sh -c "$cmd"
 
 checkrc $? 0 "$comment"
-
-#
-# unsupported filesystem
-#
-comment="unsupported filesystem"
-cmd="ls -l /dev/vda"
-
-dd if=/dev/zero of=$dev bs=1M count=100 >/dev/null
-
-docker run \
-    --runtime runq \
-    --name $(rand_name) \
-    --rm \
-    -v $dev:/dev/disk/writeback/btrfs/mnt \
-    $image \
-    sh -c "$cmd"
-
-checkrc $? 1 "$comment"
 

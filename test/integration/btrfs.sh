@@ -1,6 +1,7 @@
 #!/bin/bash
 . $(cd ${0%/*};pwd;)/../common.sh
 
+set -x
 test $UID -eq 0 || skip "reason: not running as root"
 command -v qemu-img || skip "reason: qemu-img not found"
 command -v qemu-nbd || skip "reason: qemu-nbd not found"
@@ -51,8 +52,8 @@ docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
-    -v $qcow1:/dev/disk/writeback/btrfs/$mnt1 \
-    -v $dev2:/dev/disk/unsafe/btrfs/$mnt2 \
+    -v $qcow1:/dev/runq/$(uuid)/writeback/btrfs/$mnt1 \
+    -v $dev2:/dev/runq/$(uuid)/unsafe/btrfs/$mnt2 \
     $image \
     sh -c "$cmd"
 
@@ -71,8 +72,8 @@ docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
-    -v $qcow1:/dev/disk/writeback/btrfs/$mnt1 \
-    -v $dev2:/dev/disk/unsafe/btrfs/$mnt2 \
+    -v $qcow1:/dev/runq/$(uuid)/writeback/btrfs/$mnt1 \
+    -v $dev2:/dev/runq/$(uuid)/unsafe/btrfs/$mnt2 \
     $image \
     sh -c "$cmd"
 

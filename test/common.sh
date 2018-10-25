@@ -3,8 +3,12 @@
 image=busybox
 rc_exit=0
 
+uuid() {
+    cat /proc/sys/kernel/random/uuid
+}
+
 rand_name() {
-    printf "%s-%s" $(basename $0|sed 's/\.sh//') $(cat /proc/sys/kernel/random/uuid | cut -c1-8)
+    printf "%s-%s" $(basename $0|sed 's/\.sh//') $(uuid | cut -c1-8)
 }
 
 rand_port() {

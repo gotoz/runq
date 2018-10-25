@@ -1,31 +1,44 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 
+	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
 
 	"github.com/pkg/errors"
 )
 
+type symlink struct {
+	dev, dir, name string
+}
+
 func setupDisks(disks []vm.Disk) error {
 	var mounts []vm.Mount
+	var links []symlink
 
 	for _, disk := range disks {
-		name, err := findDisk(disk.Serial)
+		dev, err := findDisk(disk.Serial)
 		if err != nil {
 			return err
 		}
-		if name == "" {
+		if dev == "" {
 			return errors.New("disk not found: " + disk.Dir)
 		}
-		dev := "/dev/" + name
+		if disk.ID != "" {
+			links = append(links, symlink{
+				dev:  dev,
+				dir:  "/dev/disk/by-runq-id",
+				name: disk.ID,
+			})
+		}
 
-		if disk.Fstype == "" {
+		if !disk.Mount {
 			continue
 		}
 
@@ -34,13 +47,17 @@ func setupDisks(disks []vm.Disk) error {
 		}
 
 		mounts = append(mounts, vm.Mount{
-			Source: dev,
+			ID:     disk.ID,
+			Source: "/dev/" + dev,
 			Target: "/rootfs" + disk.Dir,
 			Fstype: disk.Fstype,
 			Flags:  syscall.MS_NOSUID | syscall.MS_NODEV,
 		})
 	}
-	return mount(mounts)
+	if err := mount(mounts); err != nil {
+		return err
+	}
+	return createSymlinks(links)
 }
 
 // findDisk searches for a block device in sysfs for a given serial number.
@@ -69,4 +86,27 @@ func findDisk(serial string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+func createSymlinks(links []symlink) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer os.Chdir(wd)
+
+	for _, l := range links {
+		if !util.DirExists(l.dir) {
+			if err := os.MkdirAll(l.dir, 0755); err != nil {
+				return err
+			}
+		}
+		if err := os.Chdir(l.dir); err != nil {
+			return errors.WithStack(err)
+		}
+		if err := os.Symlink("../../"+l.dev, l.name); err != nil {
+			return fmt.Errorf("can't create symlink: %v", err)
+		}
+	}
+	return nil
 }

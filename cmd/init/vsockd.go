@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/gotoz/runq/pkg/util"
-	"github.com/gotoz/runq/pkg/vm"
 	"github.com/gotoz/runq/pkg/vs"
 	"github.com/kr/pty"
 	"github.com/mdlayher/vsock"
@@ -73,7 +72,7 @@ func mainVsockd() {
 		ClientCAs:    certpool,
 	}
 
-	inner, err := vsock.Listen(vm.VsockPort)
+	inner, err := vsock.Listen(vs.Port)
 	if err != nil {
 		log.Fatalf("listen failed: %v", err)
 	}

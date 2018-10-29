@@ -8,9 +8,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// VsockPort
-const VsockPort = 1
-
 // MinMem declares the minimum amount of RAM a VM in MiB.
 const MinMem = 64
 

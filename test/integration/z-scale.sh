@@ -15,8 +15,8 @@ for ((i=0; i<n; i++)); do
         --runtime runq \
         --rm \
         --name $name \
-        -e runq_cpu=1 \
-        -e runq_mem=64 \
+        -e RUNQ_CPU=1 \
+        -e RUNQ_MEM=128 \
         -d \
         -p $port:$port \
         $image \

@@ -78,17 +78,11 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		"-chardev", "stdio,id=console,signal=off",
 	)
 
-	for i, d := range vmdata.Disks {
-		var writeCache string
-		switch d.Cache {
-		case "writeback", "none", "unsafe":
-			writeCache = "on"
-		case "writethrough", "directsync":
-			writeCache = "off"
-		default:
-			return nil, nil, fmt.Errorf("invalid cache type: %s", d.Cache)
-		}
+	if len(vmdata.Disks) > 0 {
+		args = append(args, "-object", "iothread,id=iothread1")
+	}
 
+	for i, d := range vmdata.Disks {
 		var format string
 		switch d.Type {
 		case vm.Qcow2Image:
@@ -99,9 +93,14 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 			return nil, nil, fmt.Errorf("invalid disk type")
 		}
 
+		aio := "threads"
+		if d.Cache == "none" {
+			aio = "native"
+		}
 		id := fmt.Sprintf("disk%d", i)
-		drive := fmt.Sprintf("file=%s,if=none,format=%s,cache=%s,id=%s", d.Path, format, d.Cache, id)
-		device := fmt.Sprintf("virtio-blk-%s,serial=%s,drive=%s,write-cache=%s%s", bus, d.Serial, id, writeCache, virtioArgs)
+
+		drive := fmt.Sprintf("file=%s,if=none,format=%s,cache=%s,aio=%s,id=%s", d.Path, format, d.Cache, aio, id)
+		device := fmt.Sprintf("virtio-blk-%s,serial=%s,drive=%s,iothread=iothread1%s", bus, d.Serial, id, virtioArgs)
 		args = append(args, "-drive", drive)
 		args = append(args, "-device", device)
 	}

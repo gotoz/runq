@@ -111,6 +111,12 @@ func runInit() error {
 		return errors.WithStack(err)
 	}
 
+	if vmdata.VsockCID != 0 {
+		if err := loadKernelModules("vsock", "/rootfs"); err != nil {
+			return err
+		}
+	}
+
 	if err := setSysctl(vmdata.Sysctl); err != nil {
 		return err
 	}
@@ -148,14 +154,16 @@ func runInit() error {
 	go reaper()
 
 	// Start vsock daemon.
-	vsockd := forker.forkVsockd(vmdata.Certificates)
-	if err := vsockd.start(); err != nil {
-		shutdown(util.ErrorToRc(err))
+	if vmdata.VsockCID != 0 {
+		vsockd := forker.forkVsockd(vmdata.Certificates)
+		if err := vsockd.start(); err != nil {
+			shutdown(util.ErrorToRc(err))
+		}
+		if err := ioutil.WriteFile(fmt.Sprintf("/proc/%d/oom_score_adj", vsockd.pid), []byte("-1000"), 0644); err != nil {
+			return err
+		}
+		go vsockd.wait()
 	}
-	if err := ioutil.WriteFile(fmt.Sprintf("/proc/%d/oom_score_adj", vsockd.pid), []byte("-1000"), 0644); err != nil {
-		return err
-	}
-	go vsockd.wait()
 
 	// Start entry point process.
 	entryPoint := forker.forkEntryPoint()

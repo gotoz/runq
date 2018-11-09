@@ -7,6 +7,7 @@ name=$(rand_name)
 
 cleanup() {
     rm -f $tmpfile
+    docker rm -f $name &>/dev/null
 }
 trap "cleanup; myexit" 0 2 15
 
@@ -90,13 +91,31 @@ wait
 checkrc $n $r "run $n exec commands simultaneously"
 
 #
-# check cert parameters
+# check cli cert parameters
 #
 $runq_exec --tlscert /var/lib/runq/cert.pem --tlskey /var/lib/runq/key.pem $name true
 checkrc $? 0 "valid custom cert file"
 
 $runq_exec --tlscert /var/lib/runq/key.pem --tlskey /var/lib/runq/cert.pem $name true
 checkrc $? 1 "invalid custom cert file"
+
+docker rm -f $name
+
+#
+#
+#
+name=$(rand_name)
+docker run \
+    --runtime runq \
+    --name $name \
+    -e RUNQ_NOEXEC=1 \
+    -dt \
+    $image sh
+
+sleep 2
+
+$runq_exec $name true
+checkrc $? 1 "disable via environment variable RUNQ_NOEXEC=1"
 
 docker rm -f $name
 

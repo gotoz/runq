@@ -27,8 +27,6 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		virtioArgs = ",disable-modern=true"
 	}
 
-	cid := fmt.Sprintf("%#x", vmdata.VsockCID)
-
 	var args []string
 	var bus string
 	switch runtime.GOARCH {
@@ -37,7 +35,6 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 			"/usr/bin/qemu-system-x86_64",
 			"-device", "virtio-rng-pci,max-bytes=1024,period=1000" + virtioArgs,
 			"-device", "virtio-9p-pci,fsdev=rootfs_dev,mount_tag=rootfs" + virtioArgs,
-			"-device", "vhost-vsock-pci,guest-cid=" + cid + virtioArgs,
 			"-device", "virtio-serial-pci" + virtioArgs,
 			"-serial", "chardev:console",
 			"-no-acpi",
@@ -48,11 +45,15 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 			"/usr/bin/qemu-system-s390x",
 			"-device", "virtio-rng-ccw,max-bytes=1024,period=1000",
 			"-device", "virtio-9p-ccw,fsdev=rootfs_dev,mount_tag=rootfs",
-			"-device", "vhost-vsock-ccw,guest-cid=" + cid,
 			"-device", "virtio-serial-ccw",
 			"-device", "sclpconsole,chardev=console",
 		}
 		bus = "ccw"
+	}
+
+	if vmdata.VsockCID != 0 {
+		device := fmt.Sprintf("vhost-vsock-%s,guest-cid=%#x%s", bus, vmdata.VsockCID, virtioArgs)
+		args = append(args, "-device", device)
 	}
 
 	args = append(args,

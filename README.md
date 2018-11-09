@@ -222,7 +222,8 @@ docker run \
 runq-exec (`/var/lib/runq/runq-exec`) is a command line utility similar to **docker exec**. It allows running
 additional commands in existing runq containers executed from the host. It uses
 [VirtioVsock](https://wiki.qemu.org/Features/VirtioVsock) for the communication
-between host and VMs. TLS is used for encryption and client authorization.
+between host and VMs. TLS is used for encryption and client authorization. Support for
+`runq-exec` can be disabled by setting the container environment variable `RUNQ_NOEXEC`.
 ```
 Usage:
   runq-exec [options] <container> command args

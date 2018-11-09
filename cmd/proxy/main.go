@@ -248,26 +248,28 @@ func completeVmdata(vmdata *vm.Data) error {
 		return err
 	}
 
-	// CID (uint32) is taken from the first 8 characters of the Docker container ID.
-	// In the unlikely event that there is already a container with a container ID that
-	// begins with the same 8 characters an error will be thrown: "unable to set guest
-	// cid..." and the container fails to start.
-	ok, _ = regexp.MatchString("^[0-9a-fA-F]{8,}", vmdata.ContainerID)
-	if ok {
-		id, _ := strconv.ParseUint(vmdata.ContainerID[:8], 16, 32)
-		vmdata.VsockCID = uint32(id)
-	} else {
-		vmdata.VsockCID = rand.Uint32()
-		log.Printf("Warning: using random Vsock CID: %d", vmdata.VsockCID)
-	}
-	if vmdata.CACert, err = ioutil.ReadFile("/qemu/certs/ca.pem"); err != nil {
-		return err
-	}
-	if vmdata.VsockCert, err = ioutil.ReadFile("/qemu/certs/cert.pem"); err != nil {
-		return err
-	}
-	if vmdata.VsockKey, err = ioutil.ReadFile("/qemu/certs/key.pem"); err != nil {
-		return err
+	if _, ok = os.LookupEnv("RUNQ_NOEXEC"); !ok {
+		// CID (uint32) is taken from the first 8 characters of the Docker container ID.
+		// In the unlikely event that there is already a container with a container ID that
+		// begins with the same 8 characters an error will be thrown: "unable to set guest
+		// cid..." and the container fails to start.
+		ok, _ = regexp.MatchString("^[0-9a-fA-F]{8,}", vmdata.ContainerID)
+		if ok {
+			id, _ := strconv.ParseUint(vmdata.ContainerID[:8], 16, 32)
+			vmdata.VsockCID = uint32(id)
+		} else {
+			vmdata.VsockCID = rand.Uint32()
+			log.Printf("Warning: using random Vsock CID: %d", vmdata.VsockCID)
+		}
+		if vmdata.CACert, err = ioutil.ReadFile("/qemu/certs/ca.pem"); err != nil {
+			return err
+		}
+		if vmdata.VsockCert, err = ioutil.ReadFile("/qemu/certs/cert.pem"); err != nil {
+			return err
+		}
+		if vmdata.VsockKey, err = ioutil.ReadFile("/qemu/certs/key.pem"); err != nil {
+			return err
+		}
 	}
 
 	os.Clearenv()

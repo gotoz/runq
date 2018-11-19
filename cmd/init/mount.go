@@ -232,7 +232,7 @@ func umountRootfs() {
 					continue
 				}
 				switch f[2] {
-				case "ext2", "ext3", "ext4", "xfs":
+				case "ext2", "ext3", "ext4", "xfs", "btrfs":
 					dirs = append([]string{f[1]}, dirs...)
 				}
 			}

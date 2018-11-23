@@ -1,10 +1,22 @@
+diff --git a/exec.go b/exec.go
+index ae8e60e4..f89ddeeb 100644
+--- a/exec.go
++++ b/exec.go
+@@ -91,6 +91,7 @@ following will output a list of processes running in the container:
+ 		},
+ 	},
+ 	Action: func(context *cli.Context) error {
++		return fmt.Errorf("RunQ does not support 'docker exec'. Use 'runq-exec' instead.")
+ 		if err := checkArgs(context, 1, minArgs); err != nil {
+ 			return err
+ 		}
 diff --git a/main.go b/main.go
-index 4642335e..03c69ee5 100644
+index 072447d1..b8bdbc4c 100644
 --- a/main.go
 +++ b/main.go
-@@ -99,6 +99,35 @@ func main() {
- 			Name:  "systemd-cgroup",
- 			Usage: "enable systemd cgroup support, expects cgroupsPath to be of form \"slice:prefix:name\" for e.g. \"system.slice:runc:434234\"",
+@@ -112,6 +112,35 @@ func main() {
+ 			Value: "auto",
+ 			Usage: "ignore cgroup permission errors ('true', 'false', or 'auto')",
  		},
 +		cli.IntFlag{
 +			Name:  "cpu",
@@ -39,10 +51,10 @@ index 4642335e..03c69ee5 100644
  	app.Commands = []cli.Command{
  		checkpointCommand,
 diff --git a/utils.go b/utils.go
-index 8ed1a88e..bb83178c 100644
+index 5165336f..9aa0a97a 100644
 --- a/utils.go
 +++ b/utils.go
-@@ -64,6 +64,9 @@ func setupSpec(context *cli.Context) (*specs.Spec, error) {
+@@ -66,6 +66,9 @@ func setupSpec(context *cli.Context) (*specs.Spec, error) {
  	if err != nil {
  		return nil, err
  	}

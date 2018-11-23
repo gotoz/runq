@@ -2,13 +2,13 @@ include ../../make.rules
 
 export GOPATH := $(shell go env GOPATH | cut -d: -f1)
 
-RUNC_COMMIT := 9f9c96235cc97674e935002fc3d78361b696a69e
+RUNC_TAG := v1.0.0-rc6
 RUNC_PATH := $(GOPATH)/src/github.com/opencontainers/runc
 EXTRA_LDFLAGS := "-X main.runqCommit=$(GIT_COMMIT)"
 
 runq: $(RUNC_PATH)/.git $(shell find . -type f ! -name runq)
 	cd $(RUNC_PATH) && git clean -fd
-	cd $(RUNC_PATH) && git checkout -q -f $(RUNC_COMMIT)
+	cd $(RUNC_PATH) && git checkout -q -f $(RUNC_TAG)
 	cd $(RUNC_PATH) && git apply $(CURDIR)/runc-to-runq.patch
 	cp $(CURDIR)/runq.go $(RUNC_PATH)/
 	CC=gcc EXTRA_LDFLAGS=$(EXTRA_LDFLAGS) $(MAKE) -C $(RUNC_PATH) BUILDTAGS="" runc

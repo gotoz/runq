@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -164,15 +163,10 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 	spec.Process.User.GID = 0
 	spec.Process.User.AdditionalGids = nil
 
-	// Compress vmdata struct and encode into a Base64 string.
-	// Compress is not really necessary but makes the output of ps
-	// look a little less messy.
-	data, err := vm.ZipEncode(vmdata)
+	vmdataB64, err := vm.ZipEncodeBase64(vmdata)
 	if err != nil {
 		return fmt.Errorf("vm.Encode(vmdata): %v", err)
 	}
-	vmdataB64 := base64.StdEncoding.EncodeToString(data)
-
 	spec.Process.Args = []string{runqStartcmd, "-name", vmdata.Linux.ContainerID, vmdataB64}
 
 	return validateProcessSpec(spec.Process)

@@ -181,18 +181,19 @@ func DecodeProcessGob(buf []byte) (*Process, error) {
 	return v, nil
 }
 
-// ZipEncode encodes a data struct into a gzip binary Gob.
-func ZipEncode(e interface{}) ([]byte, error) {
+// ZipEncodeBase64 encodes arbitray data into a gziped binary Gob
+// and returns it encoded as base64.
+func ZipEncodeBase64(data interface{}) (string, error) {
 	var buf bytes.Buffer
 	wr := gzip.NewWriter(&buf)
 	enc := gob.NewEncoder(wr)
-	if err := enc.Encode(e); err != nil {
-		return nil, err
+	if err := enc.Encode(data); err != nil {
+		return "", err
 	}
 	if err := wr.Close(); err != nil {
-		return nil, err
+		return "", err
 	}
-	return buf.Bytes(), nil
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
 
 // ZipDecodeBase64 decodes a base64 string, into a data struct.

@@ -99,6 +99,12 @@ checkrc $? 0 "valid custom cert file"
 $runq_exec --tlscert /var/lib/runq/key.pem --tlskey /var/lib/runq/cert.pem $name true
 checkrc $? 1 "invalid custom cert file"
 
+#
+# check environment variable
+#
+$runq_exec -e FOO=42 $name sh -c 'exit $FOO'
+checkrc $? 42 "with environment variable"
+
 docker rm -f $name
 
 #

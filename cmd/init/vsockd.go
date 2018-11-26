@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -23,23 +24,24 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-type jobRequest struct {
-	cmd      *exec.Cmd
-	conf     byte
-	ctrlConn net.Conn
-	started  bool
+type jobExecution struct {
+	cmd       *exec.Cmd
+	ctrlConn  net.Conn
+	started   bool
+	withStdin bool
+	withTTY   bool
 }
 
 type jobDB struct {
 	sync.Mutex
-	m map[string]jobRequest
+	m map[vs.JobID]jobExecution
 }
 
 var jobs jobDB
 
 func mainVsockd() {
 	signal.Ignore(unix.SIGTERM, unix.SIGUSR1, unix.SIGUSR2)
-	jobs = jobDB{m: make(map[string]jobRequest)}
+	jobs = jobDB{m: make(map[vs.JobID]jobExecution)}
 
 	rd := os.NewFile(uintptr(3), "rd")
 	if rd == nil {
@@ -137,9 +139,9 @@ func handleConnection(conn net.Conn) {
 
 	// first byte determines the connection type
 	switch buf[0] {
-	case vs.ConnControl:
+	case vs.TypeControlConn:
 		controlConnection(c, buf[1:n])
-	case vs.ConnExecute:
+	case vs.TypeExecuteConn:
 		executeConnection(c, buf[1:n])
 	default:
 		log.Printf("invalid connection type %#x\n", buf[0])
@@ -154,46 +156,54 @@ func controlConnection(c net.Conn, buf []byte) {
 		return
 	}
 
-	// first byte is the config byte
-	cmdConf := buf[0]
-
-	// remaining bytes are the command and arguments separated by 0x0
-	var args []string
-	for _, v := range bytes.Split(buf[1:], []byte{0}) {
-		args = append(args, string(v))
+	jr, err := vs.DecodeJobRequest(buf)
+	if err != nil {
+		log.Printf("can't decode JobRequest: %v", err)
+		c.Close()
+		return
 	}
 
-	job := jobRequest{
-		cmd:      exec.Command(args[0], args[1:]...),
-		conf:     cmdConf,
-		ctrlConn: c,
+	job := jobExecution{
+		cmd:       exec.Command(jr.Args[0], jr.Args[1:]...),
+		ctrlConn:  c,
+		withStdin: jr.WithStdin,
+		withTTY:   jr.WithTTY,
+	}
+	job.cmd.Env = append(os.Environ(), jr.Env...)
+
+	var id vs.JobID
+	_, err = rand.Read(id[:])
+	if err != nil {
+		log.Print(err)
+		c.Close()
+		return
 	}
 
-	jobid := util.RandStr(8)
 	jobs.Lock()
-	jobs.m[jobid] = job
+	jobs.m[id] = job
 	jobs.Unlock()
-	c.Write([]byte(jobid))
+	c.Write(id[:])
 
 	// remove job request if it hasn't been started within 1 second
 	time.Sleep(time.Second)
 	jobs.Lock()
-	job, exists := jobs.m[jobid]
+	job, exists := jobs.m[id]
 	if exists && !job.started {
-		delete(jobs.m, jobid)
+		delete(jobs.m, id)
 		c.Close()
-		log.Printf("removed unused job request %s", jobid)
+		log.Printf("removed unused job request %v", id)
 	}
 	jobs.Unlock()
 }
 
 func executeConnection(c net.Conn, buf []byte) {
-	id := string(buf)
+	var id vs.JobID
+	copy(id[:], buf)
 	jobs.Lock()
 	job, exists := jobs.m[id]
 	if !exists || job.started {
 		jobs.Unlock()
-		log.Printf("received invalid jobid: %q", id)
+		log.Printf("received invalid jobid: %v", id)
 		c.Close()
 		return
 	}
@@ -202,7 +212,7 @@ func executeConnection(c net.Conn, buf []byte) {
 	jobs.Unlock()
 
 	var err error
-	if job.conf&vs.ConfTTY > 0 {
+	if job.withTTY {
 		err = startCommandWithTTY(c, job)
 	} else {
 		err = startCommandNoTTY(c, job)
@@ -247,26 +257,26 @@ func executeConnection(c net.Conn, buf []byte) {
 	jobs.Unlock()
 }
 
-func startCommandWithTTY(c net.Conn, job jobRequest) error {
+func startCommandWithTTY(c net.Conn, job jobExecution) error {
 	ptmx, err := pty.Start(job.cmd)
 	if err != nil {
 		return err
 	}
 	defer ptmx.Close()
 
-	if job.conf&vs.ConfStdin > 0 {
+	if job.withStdin {
 		go io.Copy(ptmx, c)
 	}
 	io.Copy(c, ptmx)
 	return nil
 }
 
-func startCommandNoTTY(c net.Conn, job jobRequest) error {
+func startCommandNoTTY(c net.Conn, job jobExecution) error {
 	var stdin io.WriteCloser
 	var stdout, stderr io.ReadCloser
 	var err error
 
-	if job.conf&vs.ConfStdin > 0 {
+	if job.withStdin {
 		stdin, err = job.cmd.StdinPipe()
 		if err != nil {
 			return fmt.Errorf("create pipe STDIN failed: %v", err)
@@ -283,7 +293,7 @@ func startCommandNoTTY(c net.Conn, job jobRequest) error {
 		return err
 	}
 
-	if job.conf&vs.ConfStdin > 0 {
+	if job.withStdin {
 		go io.Copy(stdin, c)
 	}
 

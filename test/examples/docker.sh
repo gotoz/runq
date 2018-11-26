@@ -1,6 +1,7 @@
 #!/bin/bash
 . $(cd ${0%/*};pwd;)/../common.sh
 
+image=docker:18.06-dind
 port=$(rand_port)
 name=$(rand_name)
 disk=/tmp/disk$$
@@ -29,7 +30,7 @@ docker run \
     --cap-add sys_admin \
     --cap-add sys_module \
     --cap-add sys_resource \
-    docker:stable-dind \
+    $image \
     dockerd \
         --data-root /docker \
         -s overlay2 \

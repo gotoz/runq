@@ -49,13 +49,18 @@ RUN rm -f /lib/modules/*/build \
 
 RUN cp /boot/vmlinuz-*-generic $QEMU_ROOT/kernel
 
+RUN cp -d --preserve=all --parents \
+  /lib/x86_64-linux-gnu/* \
+  /usr/lib/x86_64-linux-gnu/* \
+  $QEMU_ROOT/ 2>&1 | grep -v 'omitting directory';:
+
 RUN cp -a --parents \
     /lib64 \
     /lib/modules \
-    /lib/x86_64-linux-gnu \
     /usr/bin/qemu-system-x86_64 \
     /usr/lib/ipxe \
-    /usr/lib/x86_64-linux-gnu \
+    /usr/lib/x86_64-linux-gnu/pulseaudio \
+    /usr/lib/x86_64-linux-gnu/qemu  \
     /usr/share/qemu \
     /usr/share/seabios \
     $QEMU_ROOT/

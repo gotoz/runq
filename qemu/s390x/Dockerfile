@@ -51,12 +51,17 @@ RUN rm -f /lib/modules/*/build  \
 ADD extract-vmlinux.sh /extract-vmlinux.sh
 RUN /extract-vmlinux.sh /boot/vmlinuz-*-generic $QEMU_ROOT/kernel
 
+RUN cp -d --preserve=all --parents \
+    /lib/s390x-linux-gnu/* \
+    /usr/lib/s390x-linux-gnu/* \
+    $QEMU_ROOT/ 2>&1 | grep -v 'omitting directory';:
+
 RUN cp -a --parents \
     /lib/ld64.so.1 \
     /lib/modules \
-    /lib/s390x-linux-gnu \
     /usr/bin/qemu-system-s390x \
-    /usr/lib/s390x-linux-gnu \
+    /usr/lib/s390x-linux-gnu/pulseaudio \
+    /usr/lib/s390x-linux-gnu/qemu \
     /usr/share/qemu \
-    $QEMU_ROOT
+    $QEMU_ROOT/
 

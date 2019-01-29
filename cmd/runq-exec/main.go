@@ -104,14 +104,12 @@ func run() int {
 		return 1
 	}
 
-	// cid = vsock context ID
-	// unique uint32 taken from first 4 bytes of the real container ID
-	i, err := strconv.ParseUint(containerID[:8], 16, 32)
+    // genrate cid from first 8 characters of container ID
+	cid, err := vs.ContextID(containerID)
 	if err != nil {
-		log.Printf("invalid container id: %s", containerID)
+		log.Print(err)
 		return 1
 	}
-	cid := uint32(i)
 
 	conn, err := vsock.Dial(cid, vs.Port)
 	if err != nil {

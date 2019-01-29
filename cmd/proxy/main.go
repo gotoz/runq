@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -23,6 +22,7 @@ import (
 
 	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
+	"github.com/gotoz/runq/pkg/vs"
 )
 
 var gitCommit string // set via Makefile
@@ -253,13 +253,9 @@ func completeVmdata(vmdata *vm.Data) error {
 		// In the unlikely event that there is already a container with a container ID that
 		// begins with the same 8 characters an error will be thrown: "unable to set guest
 		// cid..." and the container fails to start.
-		ok, _ = regexp.MatchString("^[0-9a-fA-F]{8,}", vmdata.ContainerID)
-		if ok {
-			id, _ := strconv.ParseUint(vmdata.ContainerID[:8], 16, 32)
-			vmdata.VsockCID = uint32(id)
-		} else {
-			vmdata.VsockCID = rand.Uint32()
-			log.Printf("Warning: using random Vsock CID: %d", vmdata.VsockCID)
+		vmdata.VsockCID, err = vs.ContextID(vmdata.ContainerID)
+		if err != nil {
+			return err
 		}
 		if vmdata.CACert, err = ioutil.ReadFile("/qemu/certs/ca.pem"); err != nil {
 			return err

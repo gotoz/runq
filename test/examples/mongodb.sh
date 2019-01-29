@@ -11,7 +11,7 @@ case "$(uname -m)" in
 esac
 
 name=$(rand_name)
-disk=/tmp/disk$$
+disk=$PWD/disk$$
 mkfs.xfs -dfile,name=$disk,size=200m
 
 cleanup() {
@@ -28,7 +28,7 @@ docker run \
     --runtime runq \
     --name $name \
     -e RUNQ_MEM=512 \
-    -v $disk:/dev/runq/$(uuid)/writeback/xfs/data/db \
+    -v $disk:/dev/runq/$(uuid)/none/xfs/data/db \
     -d \
     $image \
       mongod --smallfiles --noprealloc --logappend --dbpath /data/db

@@ -4,7 +4,7 @@
 image=docker:18.06-dind
 port=$(rand_port)
 name=$(rand_name)
-disk=/tmp/disk$$
+disk=$PWD/disk$$
 dd if=/dev/zero of=$disk bs=1M count=100 >/dev/null
 mkfs.ext4 -F $disk
 
@@ -24,7 +24,7 @@ docker run \
     -p $port:2375 \
     --name $name \
     -d \
-    --volume $disk:/dev/runq/$(uuid)/writethrough/ext4/docker \
+    --volume $disk:/dev/runq/$(uuid)/none/ext4/docker \
     --security-opt seccomp=unconfined \
     --cap-add net_admin \
     --cap-add sys_admin \

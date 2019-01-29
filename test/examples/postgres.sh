@@ -2,7 +2,7 @@
 . $(cd ${0%/*};pwd;)/../common.sh
 
 name=$(rand_name)
-disk=/tmp/disk$$
+disk=$PWD/disk$$
 image=postgres:alpine
 PGPASSWORD=mysecretpassword
 
@@ -23,7 +23,7 @@ docker run \
     -e RUNQ_MEM=512 \
     -e RUNQ_CPU=2 \
     -e POSTGRES_PASSWORD=$PGPASSWORD \
-    -v $disk:/dev/runq/$(uuid)/writeback/ext4/var/lib/postgresql \
+    -v $disk:/dev/runq/$(uuid)/none/ext4/var/lib/postgresql \
     -d \
     $image
 

@@ -132,7 +132,7 @@ docker run \
     -e RUNQ_CPU=2 \
     -e RUNQ_MEM=512 \
     -e POSTGRES_PASSWORD=mysecret \
-    -v $PWD/data.img:/dev/runq/0001/writeback/ext4/var/lib/postgresql \
+    -v $PWD/data.img:/dev/runq/0001/none/ext4/var/lib/postgresql \
     -d postgres:alpine
 
 sleep 10
@@ -286,6 +286,7 @@ regular block devices. Storage devices will be mounted automatically if
 a filesytem and a mount point has been specified.
 Supported filesystems are ext2, ext3, ext4, xfs and btrfs.
 Cache type must be writeback, writethrough, none or unsafe.
+Cache type "none" is recommended for filesystems that support `O_DIRECT`.
 See man qemu(1) for details about different cache types.
 
 Syntax:
@@ -304,7 +305,7 @@ but it must be unique within a container.
 ### Storage examples
 Mount the existing Qcow image `/data.qcow2` with xfs filesystem to `/mnt/data`:
 ```
-docker run -v /data.qcow2:/dev/runq/0001/writeback/xfs/mnt/data ...
+docker run -v /data.qcow2:/dev/runq/0001/none/xfs/mnt/data ...
 ```
 
 Attach the host device `/dev/sdb1` formatted with ext4 to `/mnt/data2`:
@@ -356,6 +357,16 @@ Security Options:
   Profile: default
 ```
 
+## AP adapter passthrough (s390x only)
+AP devices provide cryptographic functions to all CPUs assigned to a linux system running in
+an IBM Z system LPAR. AP devices can be made available to a runq container by passing a VFIO mediated
+device from the host through Qemu into the runq VM guest. VFIO mediaded devices are enabled by the
+`vfio_ap` kernel module and allow for partitioning of AP devices and domains. The environment variable RUNQ_APUUID spcecifies the VFIO mediated device UUID. runq automatically loads the required zcrypt kernel modules inside the VM. E.g.:
+```
+docker run --runtime runq -e RUNQ_APUUID=b34543ee-496b-4769-8312-83707033e1de ...
+```
+For details on how to setup mediated devices on the host see
+https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/s390/vfio-ap.txt
 
 ## Limitations
 Most docker commands and options work as expected. However, due to
@@ -367,6 +378,7 @@ some docker commands and options don't work. E.g:
 * docker swarm
 * privileged mode
 * apparmor, selinux, ambient
+* docker HEALTHCHECK
 
 The following common options of `docker run` are supported:
 ```
@@ -395,17 +407,6 @@ considered working but not meant for production use. Running KVM guests inside g
 hypervisors such as VMware might not work as expected or might not work at all.
 However to try out runq in a VM guest the (experimental) runq runtime configuration parameter
 `--nestedvm` can be used. It modifies the parameters of the Qemu process.
-
-## AP adapter passthrough (s390x only)
-AP devices provide cryptographic functions to all CPUs assigned to a linux system running in
-an IBM Z system LPAR. AP devices can be made available to a runq container by passing a VFIO mediated
-device from the host through Qemu into the runq VM guest. VFIO mediaded devices are enabled by the 
-`vfio_ap` kernel module and allow for partitioning of AP devices and domains. The environment variable RUNQ_APUUID spcecifies the VFIO mediated device UUID. runq automatically loads the required zcrypt kernel modules inside the VM. E.g.:
-```
-docker run --runtime runq -e RUNQ_APUUID=b34543ee-496b-4769-8312-83707033e1de ...
-```
-For details on how to setup mediated devices on the host see
-https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/s390/vfio-ap.txt
 
 ## Developing runq
 For fast development cycles runq can be build on the host as follows:

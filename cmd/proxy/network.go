@@ -84,22 +84,15 @@ func setupNetwork() ([]vm.Network, error) {
 			return nil, errors.Wrapf(err, "LinkSetUp %s:", mvtAttrs.Name)
 		}
 
-		hardwareAddr := macvtap.Attrs().HardwareAddr
-		if err := netlink.LinkSetHardwareAddr(link, hardwareAddr); err != nil {
-			return nil, errors.Wrapf(err, "LinkSetHardwareAddr %s", hardwareAddr)
-		}
-
-		if link.Type() == "veth" {
-			if err := netlink.LinkSetUp(link); err != nil {
-				return nil, errors.Wrapf(err, "LinkSetUp %s", attr.Name)
-			}
+		if err := netlink.LinkSetUp(link); err != nil {
+			return nil, errors.Wrapf(err, "LinkSetUp %s", attr.Name)
 		}
 
 		networks = append(networks, vm.Network{
 			Name:       attr.Name,
 			MvtName:    mvtAttrs.Name,
 			MvtIndex:   macvtap.Attrs().Index,
-			MacAddress: hardwareAddr.String(),
+			MacAddress: macvtap.Attrs().HardwareAddr.String(),
 			MTU:        attr.MTU,
 			Addrs:      addrs,
 			Gateway:    gateway,

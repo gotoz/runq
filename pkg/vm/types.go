@@ -126,15 +126,20 @@ type Process struct {
 	Terminal        bool
 }
 
+// DNS contains dns configuration.
+type DNS struct {
+	Server  []string
+	Options string
+	Search  string
+}
+
 // Linux contains the configuration of the VM.
 type Linux struct {
 	APDevice    string
 	ContainerID string
 	CPU         int
 	Disks       []Disk
-	DNS         []string
-	DNSOpts     string
-	DNSSearch   string
+	DNS         DNS
 	GitCommit   string
 	Hostname    string
 	Mem         int

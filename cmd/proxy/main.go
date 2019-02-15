@@ -221,25 +221,25 @@ func completeVmdata(vmdata *vm.Data) error {
 
 	val, ok := os.LookupEnv("RUNQ_DNS")
 	if ok {
-		vmdata.DNS = []string{}
+		vmdata.DNS.Server = []string{}
 		for _, v := range strings.Split(val, ",") {
 			v = strings.TrimSpace(v)
 			if v == "" {
 				continue
 			}
-			vmdata.DNS = append(vmdata.DNS, v)
+			vmdata.DNS.Server = append(vmdata.DNS.Server, v)
 		}
 	}
 	val, ok = os.LookupEnv("RUNQ_DNS_OPTS")
 	if ok {
-		vmdata.DNSOpts = val
+		vmdata.DNS.Options = val
 	}
 	val, ok = os.LookupEnv("RUNQ_DNS_SEARCH")
 	if ok {
-		vmdata.DNSSearch = val
+		vmdata.DNS.Search = val
 	}
 
-	err = setupDNS(vmdata.DNS, vmdata.DNSOpts, vmdata.DNSSearch)
+	err = writeResolvConf(vmdata.DNS)
 	if err != nil {
 		return err
 	}

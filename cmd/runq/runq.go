@@ -16,7 +16,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/gotoz/runq/pkg/vm"
-	"github.com/opencontainers/runtime-spec/specs-go"
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/vishvananda/netlink"
 )
 
@@ -76,11 +76,21 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 	//
 	// Linux
 	//
+	dns := vm.DNS{
+		Options: strings.TrimSpace(context.GlobalString("dns-opts")),
+		Search:  strings.TrimSpace(context.GlobalString("dns-search")),
+	}
+	for _, v := range strings.Split(context.GlobalString("dns"), ",") {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		dns.Server = append(dns.Server, v)
+	}
 	vmdata.Linux = vm.Linux{
 		ContainerID: strings.TrimSpace((context.Args()[0] + strings.Repeat(" ", 12))[:12]),
 		CPU:         context.GlobalInt("cpu"),
-		DNSOpts:     strings.TrimSpace(context.GlobalString("dns-opts")),
-		DNSSearch:   strings.TrimSpace(context.GlobalString("dns-search")),
+		DNS:         dns,
 		GitCommit:   runqCommit,
 		Mem:         context.GlobalInt("mem"),
 		NestedVM:    context.GlobalBool("nestedvm"),
@@ -88,14 +98,6 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 	}
 
 	spec.Linux.Sysctl = nil
-
-	for _, v := range strings.Split(context.GlobalString("dns"), ",") {
-		v = strings.TrimSpace(v)
-		if v == "" {
-			continue
-		}
-		vmdata.Linux.DNS = append(vmdata.Linux.DNS, v)
-	}
 
 	if err := specDevices(spec, &vmdata); err != nil {
 		return err

@@ -270,15 +270,20 @@ runq container can also be connected to one or more Docker networks of type Macv
 This allows a direct connection between the VM and the physical host network
 without bridge and without NAT. See https://docs.docker.com/network/macvlan/ for details.
 
-Docker uses an embedded DNS server (127.0.0.11) for containers that are
-connected to custom networks. This IP is not reachable from within the VM.
-Therefore DNS for runq containers must be configured seperatetly.
+For custom networks the docker daemon implements an embedded DNS server which provides
+built-in service discovery for any container created with a valid container name.
+This Docker DNS server (listen address 127.0.0.11:53) is reachable only by runc containers
+and not by runq containers.
+A work-around is to run one or more DNS proxy container in the custom network with runc and
+use the proxy IP address for DNS of runq containers.
+See [test/examples/dnsproxy.sh](test/examples/dnsproxy.sh) for details on how to setup a DNS proxy.
 
-DNS configuration can be done globally via runtime options specified in
+DNS configuration without proxy can be done globally via runtime options specified in
 'daemon.json' (see example above) or via environment variables for each
 container at container start.
 The environment variables are `RUNQ_DNS`, `RUNQ_DNS_OPT` and `RUNQ_DNS_SEARCH`.
 Environment variables have priority over global options.
+
 
 ## Storage
 Extra storage can be added in the form of Qcow2 images, raw file images or

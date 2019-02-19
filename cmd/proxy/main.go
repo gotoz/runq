@@ -214,11 +214,6 @@ func completeVmdata(vmdata *vm.Data) error {
 	home := util.UserHome(int(vmdata.UID))
 	vmdata.Env = append(vmdata.Env, fmt.Sprintf("HOME=%s", home))
 
-	vmdata.Networks, err = setupNetwork()
-	if err != nil {
-		return err
-	}
-
 	val, ok := os.LookupEnv("RUNQ_DNS")
 	if ok {
 		vmdata.DNS.Server = []string{}
@@ -240,6 +235,11 @@ func completeVmdata(vmdata *vm.Data) error {
 	}
 
 	err = writeResolvConf(vmdata.DNS)
+	if err != nil {
+		return err
+	}
+
+	vmdata.Networks, err = setupNetwork()
 	if err != nil {
 		return err
 	}

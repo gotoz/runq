@@ -11,10 +11,10 @@ index ae8e60e4..f89ddeeb 100644
  			return err
  		}
 diff --git a/main.go b/main.go
-index 072447d1..b8bdbc4c 100644
+index 072447d1..dc494505 100644
 --- a/main.go
 +++ b/main.go
-@@ -112,6 +112,35 @@ func main() {
+@@ -112,6 +112,40 @@ func main() {
  			Value: "auto",
  			Usage: "ignore cgroup permission errors ('true', 'false', or 'auto')",
  		},
@@ -46,6 +46,11 @@ index 072447d1..b8bdbc4c 100644
 +		cli.BoolFlag{
 +			Name:  "nestedvm",
 +			Usage: "enable support for nested VMs",
++		},
++		cli.StringFlag{
++			Name:  "tmpfs",
++			Value: "",
++			Usage: "default tmpfs directories",
 +		},
  	}
  	app.Commands = []cli.Command{

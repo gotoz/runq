@@ -103,7 +103,7 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 		return err
 	}
 
-	if err := specMounts(spec, &vmdata); err != nil {
+	if err := specMounts(context, spec, &vmdata); err != nil {
 		return err
 	}
 
@@ -351,8 +351,9 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 	return nil
 }
 
-func specMounts(spec *specs.Spec, vmdata *vm.Data) error {
+func specMounts(context *cli.Context, spec *specs.Spec, vmdata *vm.Data) error {
 	var mounts []specs.Mount
+	tmpfs := make(map[string]bool)
 
 	for _, m := range spec.Mounts {
 		// Ignore invalid mounts.
@@ -371,14 +372,29 @@ func specMounts(spec *specs.Spec, vmdata *vm.Data) error {
 					Flags:  flags,
 					Data:   data,
 				})
+				tmpfs[m.Destination] = true
 			}
 			continue
 		}
+
 		// TODO: remove deprecated syntax "/dev/disk/..."
 		if strings.HasPrefix(m.Destination, "/dev/runq/") || strings.HasPrefix(m.Destination, "/dev/disk/") {
 			vmdata.Disks = append(vmdata.Disks, vm.Disk{Path: m.Destination, Type: vm.DisktypeUnknown})
 		}
 		mounts = append(mounts, m)
+	}
+
+	for _, d := range strings.Split(strings.TrimSpace(context.GlobalString("tmpfs")), ",") {
+		if d == "" || tmpfs[d] {
+			continue
+		}
+		vmdata.Mounts = append(vmdata.Mounts, vm.Mount{
+			Source: "tmpfs",
+			Target: d,
+			Fstype: "tmpfs",
+			Flags:  syscall.MS_NODEV | syscall.MS_NOSUID,
+			Data:   "",
+		})
 	}
 
 	// Bind-mount Qemu root directory to every VM.

@@ -3,11 +3,12 @@
      "runq": {
      "path": "/var/lib/runq/runq",
      "runtimeArgs": [
-        "--cpu", "1", 
-        "--mem", "256", 
+        "--cpu", "1",
+        "--mem", "256",
         "--dns", "8.8.8.8,8.8.4.4",
         "--dns-opts", "timeout:2",
-        "--dns-search", "example.com"
+        "--dns-search", "example.com",
+        "--tmpfs", "/tmp,/var/tmp"
       ]
     }
   }

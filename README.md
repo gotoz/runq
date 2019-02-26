@@ -63,7 +63,8 @@ Register runq as Docker runtime with appropriate defaults. See [daemon.json](tes
       "runtimeArgs": [
         "--cpu", "1",
         "--mem", "256",
-        "--dns", "8.8.8.8,8.8.4.4"
+        "--dns", "8.8.8.8,8.8.4.4",
+        "--tmpfs", "/tmp"
       ]
     }
   }

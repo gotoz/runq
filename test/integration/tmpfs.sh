@@ -1,15 +1,25 @@
 #!/bin/bash
 . $(cd ${0%/*};pwd;)/../common.sh
 
+comment="default runtime tmpfs directories"
+docker run \
+    --runtime runq \
+    --name $(rand_name) \
+    --rm \
+    $image  \
+    sh -c 'rc=$(df | egrep /tmp$\|/var/tmp$ | grep -c ^tmpfs); exit $rc'
+
+checkrc $? 2 "$comment"
+
 comment="set multiple tmpfs with subdir"
 docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
     --tmpfs /mytmp \
-    --tmpfs /tmp/tmp \
+    --tmpfs /mnt/tmp \
     $image  \
-    sh -c 'rc=$(df | egrep /mytmp$\|/tmp/tmp$ | grep -c ^tmpfs); exit $rc'
+    sh -c 'rc=$(df | egrep /mytmp$\|/mnt/tmp$ | grep -c ^tmpfs); exit $rc'
 
 checkrc $? 2 "$comment"
 

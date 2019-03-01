@@ -94,6 +94,7 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 		GitCommit:   runqCommit,
 		Mem:         context.GlobalInt("mem"),
 		NestedVM:    context.GlobalBool("nestedvm"),
+		NoExec:      context.GlobalBool("noexec"),
 		Sysctl:      spec.Linux.Sysctl,
 	}
 

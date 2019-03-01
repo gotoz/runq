@@ -146,6 +146,7 @@ type Linux struct {
 	Mounts      []Mount
 	NestedVM    bool
 	Networks    []Network
+	NoExec      bool
 	Sysctl      map[string]string
 	VsockCID    uint32
 }

@@ -11,10 +11,10 @@ index ae8e60e4..f89ddeeb 100644
  			return err
  		}
 diff --git a/main.go b/main.go
-index 072447d1..dc494505 100644
+index 072447d1..0cd75134 100644
 --- a/main.go
 +++ b/main.go
-@@ -112,6 +112,40 @@ func main() {
+@@ -112,6 +112,44 @@ func main() {
  			Value: "auto",
  			Usage: "ignore cgroup permission errors ('true', 'false', or 'auto')",
  		},
@@ -51,6 +51,10 @@ index 072447d1..dc494505 100644
 +			Name:  "tmpfs",
 +			Value: "",
 +			Usage: "default tmpfs directories",
++		},
++		cli.BoolFlag{
++			Name:  "noexec",
++			Usage: "disable runq exec",
 +		},
  	}
  	app.Commands = []cli.Command{

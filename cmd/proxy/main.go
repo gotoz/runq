@@ -248,7 +248,7 @@ func completeVmdata(vmdata *vm.Data) error {
 		return err
 	}
 
-	if _, ok = os.LookupEnv("RUNQ_NOEXEC"); !ok {
+	if _, ok := os.LookupEnv("RUNQ_NOEXEC"); !(ok || vmdata.NoExec) {
 		// CID (uint32) is taken from the first 8 characters of the Docker container ID.
 		// In the unlikely event that there is already a container with a container ID that
 		// begins with the same 8 characters an error will be thrown: "unable to set guest

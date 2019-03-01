@@ -224,7 +224,8 @@ runq-exec (`/var/lib/runq/runq-exec`) is a command line utility similar to **doc
 additional commands in existing runq containers executed from the host. It uses
 [VirtioVsock](https://wiki.qemu.org/Features/VirtioVsock) for the communication
 between host and VMs. TLS is used for encryption and client authorization. Support for
-`runq-exec` can be disabled by setting the container environment variable `RUNQ_NOEXEC`.
+`runq-exec` can be disabled by setting the container environment variable `RUNQ_NOEXEC`
+or by `--noexec` in [/etc/docker/daemon.json](test/testdata/daemon.json).
 ```
 Usage:
   runq-exec [options] <container> command args
@@ -280,7 +281,7 @@ use the proxy IP address for DNS of runq containers.
 See [test/examples/dnsproxy.sh](test/examples/dnsproxy.sh) for details on how to setup a DNS proxy.
 
 DNS configuration without proxy can be done globally via runtime options specified in
-'daemon.json' (see example above) or via environment variables for each
+'/etc/docker/daemon.json' (see example above) or via environment variables for each
 container at container start.
 The environment variables are `RUNQ_DNS`, `RUNQ_DNS_OPT` and `RUNQ_DNS_SEARCH`.
 Environment variables have priority over global options.

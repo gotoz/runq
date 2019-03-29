@@ -47,7 +47,7 @@ func mountRootfs(extraMounts []vm.Mount) error {
 			Target: "/rootfs",
 			Fstype: "9p",
 			Flags:  unix.MS_NODEV | unix.MS_DIRSYNC,
-			Data:   "trans=virtio",
+			Data:   "trans=virtio,cache=mmap",
 		},
 		{
 			Source: "proc",

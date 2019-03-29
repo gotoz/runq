@@ -33,3 +33,7 @@ ignored = [
 [[constraint]]
   branch = "master"
   name = "golang.org/x/crypto"
+
+[[constraint]]
+  name = "github.com/mdlayher/vsock"
+  revision = "65587aa3274a83bbca6fcb90c96e84a3912b3201"

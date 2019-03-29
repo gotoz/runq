@@ -5,6 +5,10 @@ package netlink
 import (
 	"net"
 	"testing"
+	"time"
+
+	"github.com/vishvananda/netns"
+	"golang.org/x/sys/unix"
 )
 
 type arpEntry struct {
@@ -249,5 +253,233 @@ func TestNeighAddDelProxy(t *testing.T) {
 
 	if err := LinkDel(&dummy); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// expectNeighUpdate returns whether the expected updated is received within one second.
+func expectNeighUpdate(ch <-chan NeighUpdate, t uint16, state int, ip net.IP) bool {
+	for {
+		timeout := time.After(time.Second)
+		select {
+		case update := <-ch:
+			if update.Type == t && update.Neigh.State == state && update.Neigh.IP != nil && update.Neigh.IP.Equal(ip) {
+				return true
+			}
+		case <-timeout:
+			return false
+		}
+	}
+}
+
+func TestNeighSubscribe(t *testing.T) {
+	tearDown := setUpNetlinkTest(t)
+	defer tearDown()
+
+	dummy := &Dummy{LinkAttrs{Name: "neigh0"}}
+	if err := LinkAdd(dummy); err != nil {
+		t.Errorf("Failed to create link: %v", err)
+	}
+	ensureIndex(dummy.Attrs())
+	defer func() {
+		if err := LinkDel(dummy); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	ch := make(chan NeighUpdate)
+	done := make(chan struct{})
+	defer close(done)
+	if err := NeighSubscribe(ch, done); err != nil {
+		t.Fatal(err)
+	}
+
+	entry := &Neigh{
+		LinkIndex:    dummy.Index,
+		State:        NUD_REACHABLE,
+		IP:           net.IPv4(10, 99, 0, 1),
+		HardwareAddr: parseMAC("aa:bb:cc:dd:00:01"),
+	}
+
+	if err := NeighAdd(entry); err != nil {
+		t.Errorf("Failed to NeighAdd: %v", err)
+	}
+	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_REACHABLE, entry.IP) {
+		t.Fatalf("Add update not received as expected")
+	}
+	if err := NeighDel(entry); err != nil {
+		t.Fatal(err)
+	}
+	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_FAILED, entry.IP) {
+		t.Fatalf("Del update not received as expected")
+	}
+}
+
+func TestNeighSubscribeWithOptions(t *testing.T) {
+	tearDown := setUpNetlinkTest(t)
+	defer tearDown()
+
+	ch := make(chan NeighUpdate)
+	done := make(chan struct{})
+	defer close(done)
+	var lastError error
+	defer func() {
+		if lastError != nil {
+			t.Fatalf("Fatal error received during subscription: %v", lastError)
+		}
+	}()
+	if err := NeighSubscribeWithOptions(ch, done, NeighSubscribeOptions{
+		ErrorCallback: func(err error) {
+			lastError = err
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	dummy := &Dummy{LinkAttrs{Name: "neigh0"}}
+	if err := LinkAdd(dummy); err != nil {
+		t.Errorf("Failed to create link: %v", err)
+	}
+	ensureIndex(dummy.Attrs())
+	defer func() {
+		if err := LinkDel(dummy); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	entry := &Neigh{
+		LinkIndex:    dummy.Index,
+		State:        NUD_REACHABLE,
+		IP:           net.IPv4(10, 99, 0, 1),
+		HardwareAddr: parseMAC("aa:bb:cc:dd:00:01"),
+	}
+
+	err := NeighAdd(entry)
+	if err != nil {
+		t.Errorf("Failed to NeighAdd: %v", err)
+	}
+	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_REACHABLE, entry.IP) {
+		t.Fatalf("Add update not received as expected")
+	}
+}
+
+func TestNeighSubscribeAt(t *testing.T) {
+	skipUnlessRoot(t)
+
+	// Create an handle on a custom netns
+	newNs, err := netns.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer newNs.Close()
+
+	nh, err := NewHandleAt(newNs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer nh.Delete()
+
+	// Subscribe for Neigh events on the custom netns
+	ch := make(chan NeighUpdate)
+	done := make(chan struct{})
+	defer close(done)
+	if err := NeighSubscribeAt(newNs, ch, done); err != nil {
+		t.Fatal(err)
+	}
+
+	dummy := &Dummy{LinkAttrs{Name: "neigh0"}}
+	if err := nh.LinkAdd(dummy); err != nil {
+		t.Errorf("Failed to create link: %v", err)
+	}
+	ensureIndex(dummy.Attrs())
+	defer func() {
+		if err := nh.LinkDel(dummy); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	entry := &Neigh{
+		LinkIndex:    dummy.Index,
+		State:        NUD_REACHABLE,
+		IP:           net.IPv4(198, 51, 100, 1),
+		HardwareAddr: parseMAC("aa:bb:cc:dd:00:01"),
+	}
+
+	err = nh.NeighAdd(entry)
+	if err != nil {
+		t.Errorf("Failed to NeighAdd: %v", err)
+	}
+	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_REACHABLE, entry.IP) {
+		t.Fatalf("Add update not received as expected")
+	}
+}
+
+func TestNeighSubscribeListExisting(t *testing.T) {
+	skipUnlessRoot(t)
+
+	// Create an handle on a custom netns
+	newNs, err := netns.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer newNs.Close()
+
+	nh, err := NewHandleAt(newNs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer nh.Delete()
+
+	dummy := &Dummy{LinkAttrs{Name: "neigh0"}}
+	if err := nh.LinkAdd(dummy); err != nil {
+		t.Errorf("Failed to create link: %v", err)
+	}
+	ensureIndex(dummy.Attrs())
+	defer func() {
+		if err := nh.LinkDel(dummy); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	entry1 := &Neigh{
+		LinkIndex:    dummy.Index,
+		State:        NUD_REACHABLE,
+		IP:           net.IPv4(198, 51, 100, 1),
+		HardwareAddr: parseMAC("aa:bb:cc:dd:00:01"),
+	}
+
+	err = nh.NeighAdd(entry1)
+	if err != nil {
+		t.Errorf("Failed to NeighAdd: %v", err)
+	}
+
+	// Subscribe for Neigh events including existing neighbors
+	ch := make(chan NeighUpdate)
+	done := make(chan struct{})
+	defer close(done)
+	if err := NeighSubscribeWithOptions(ch, done, NeighSubscribeOptions{
+		Namespace:    &newNs,
+		ListExisting: true},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_REACHABLE, entry1.IP) {
+		t.Fatalf("Existing add update not received as expected")
+	}
+
+	entry2 := &Neigh{
+		LinkIndex:    dummy.Index,
+		State:        NUD_PERMANENT,
+		IP:           net.IPv4(198, 51, 100, 2),
+		HardwareAddr: parseMAC("aa:bb:cc:dd:00:02"),
+	}
+
+	err = nh.NeighAdd(entry2)
+	if err != nil {
+		t.Errorf("Failed to NeighAdd: %v", err)
+	}
+
+	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_PERMANENT, entry2.IP) {
+		t.Fatalf("Existing add update not received as expected")
 	}
 }

@@ -31,6 +31,18 @@ func TestXfrmPolicyAddUpdateDel(t *testing.T) {
 		t.Fatalf("unexpected policy returned.\nExpected: %v.\nGot %v", policy, policies[0])
 	}
 
+	if policies[0].Ifindex != 0 {
+		t.Fatalf("default policy has a non-zero interface index.\nGot %d", policies[0].Ifindex)
+	}
+
+	if policies[0].Ifid != 0 {
+		t.Fatalf("default policy has non-zero if_id.\nGot %d", policies[0].Ifid)
+	}
+
+	if policies[0].Action != XFRM_POLICY_ALLOW {
+		t.Fatalf("default policy has non-allow action.\nGot %s", policies[0].Action)
+	}
+
 	// Look for a specific policy
 	sp, err := XfrmPolicyGet(policy)
 	if err != nil {
@@ -129,6 +141,55 @@ func TestXfrmPolicyFlush(t *testing.T) {
 
 }
 
+func TestXfrmPolicyBlockWithIfindex(t *testing.T) {
+	defer setUpNetlinkTest(t)()
+
+	pBlock := getPolicy()
+	pBlock.Action = XFRM_POLICY_BLOCK
+	pBlock.Ifindex = 1 // loopback interface
+	if err := XfrmPolicyAdd(pBlock); err != nil {
+		t.Fatal(err)
+	}
+	policies, err := XfrmPolicyList(FAMILY_ALL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(policies) != 1 {
+		t.Fatalf("unexpected number of policies: %d", len(policies))
+	}
+	if !comparePolicies(pBlock, &policies[0]) {
+		t.Fatalf("unexpected policy returned.\nExpected: %v.\nGot %v", pBlock, policies[0])
+	}
+	if err = XfrmPolicyDel(pBlock); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestXfrmPolicyWithIfid(t *testing.T) {
+	minKernelRequired(t, 4, 19)
+	defer setUpNetlinkTest(t)()
+
+	pol := getPolicy()
+	pol.Ifid = 54321
+
+	if err := XfrmPolicyAdd(pol); err != nil {
+		t.Fatal(err)
+	}
+	policies, err := XfrmPolicyList(FAMILY_ALL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(policies) != 1 {
+		t.Fatalf("unexpected number of policies: %d", len(policies))
+	}
+	if !comparePolicies(pol, &policies[0]) {
+		t.Fatalf("unexpected policy returned.\nExpected: %v.\nGot %v", pol, policies[0])
+	}
+	if err = XfrmPolicyDel(&policies[0]); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func comparePolicies(a, b *XfrmPolicy) bool {
 	if a == b {
 		return true
@@ -139,8 +200,9 @@ func comparePolicies(a, b *XfrmPolicy) bool {
 	// Do not check Index which is assigned by kernel
 	return a.Dir == b.Dir && a.Priority == b.Priority &&
 		compareIPNet(a.Src, b.Src) && compareIPNet(a.Dst, b.Dst) &&
+		a.Action == b.Action && a.Ifindex == b.Ifindex &&
 		a.Mark.Value == b.Mark.Value && a.Mark.Mask == b.Mark.Mask &&
-		compareTemplates(a.Tmpls, b.Tmpls)
+		a.Ifid == b.Ifid && compareTemplates(a.Tmpls, b.Tmpls)
 }
 
 func compareTemplates(a, b []XfrmPolicyTmpl) bool {

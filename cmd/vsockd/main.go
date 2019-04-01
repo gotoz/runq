@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -12,17 +11,32 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"os/signal"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gotoz/runq/pkg/util"
+	"github.com/gotoz/runq/pkg/vm"
 	"github.com/gotoz/runq/pkg/vs"
 	"github.com/kr/pty"
 	"github.com/mdlayher/vsock"
-	"golang.org/x/sys/unix"
+	"github.com/pkg/errors"
 )
+
+var (
+	gitCommit     string // set via Makefile
+	entrypointEnv []string
+	entrypointPid string
+	jobs          jobDB
+)
+
+func init() {
+	runtime.LockOSThread()
+	log.SetPrefix(fmt.Sprintf("[%s(%d) %s] ", filepath.Base(os.Args[0]), os.Getpid(), gitCommit))
+	log.SetFlags(log.Lmicroseconds)
+}
 
 type jobExecution struct {
 	cmd       *exec.Cmd
@@ -37,35 +51,57 @@ type jobDB struct {
 	m map[vs.JobID]jobExecution
 }
 
-var jobs jobDB
+type vsockd struct {
+	jobs jobDB
+}
 
-func mainVsockd() {
-	signal.Ignore(unix.SIGTERM, unix.SIGUSR1, unix.SIGUSR2)
-	jobs = jobDB{m: make(map[vs.JobID]jobExecution)}
+func main() {
+	if err := run(); err != nil {
+		log.Fatalf("%+v", err)
+	}
+}
+
+func run() error {
+	if len(os.Args) < 2 {
+		return fmt.Errorf("Usage: %s <pid of entrypoint>", os.Args[0])
+	}
+	entrypointPid = os.Args[1]
+	if _, err := strconv.Atoi(entrypointPid); err != nil {
+		return fmt.Errorf("invalid pid of entrypoint : %v", err)
+	}
 
 	rd := os.NewFile(uintptr(3), "rd")
 	if rd == nil {
-		log.Fatal("failed to open pipe")
+		return errors.New("rd == nil")
 	}
+
 	buf, err := ioutil.ReadAll(rd)
 	if err != nil {
-		log.Fatalf("failed to read from pipe: %v", err)
+		return errors.WithStack(err)
 	}
-	rd.Close()
+	if err := rd.Close(); err != nil {
+		return errors.WithStack(err)
+	}
 
-	certs := bytes.Split(buf, []byte{0})
-	if len(certs) != 3 {
-		log.Fatal("date read from pipe is invalid")
+	vsockd, err := vm.DecodeVsockdGob(buf)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	entrypointEnv = vsockd.EntrypointEnv
+
+	jobs = jobDB{
+		m: make(map[vs.JobID]jobExecution),
 	}
 
 	certpool := x509.NewCertPool()
-	if !certpool.AppendCertsFromPEM(certs[0]) {
-		log.Fatalf("failed to parse CA certificate")
+	if !certpool.AppendCertsFromPEM(vsockd.CACert) {
+		return errors.New("failed to parse CA certificate")
 	}
 
-	cert, err := tls.X509KeyPair(certs[1], certs[2])
+	cert, err := tls.X509KeyPair(vsockd.Cert, vsockd.Key)
 	if err != nil {
-		log.Fatalf("failed to parse certificate/key pair: %v", err)
+		return errors.WithMessage(err, "failed to parse certificate/key pair")
 	}
 
 	config := &tls.Config{
@@ -76,7 +112,7 @@ func mainVsockd() {
 
 	inner, err := vsock.Listen(vs.Port)
 	if err != nil {
-		log.Fatalf("listen failed: %v", err)
+		return fmt.Errorf("listen failed: %v", err)
 	}
 	defer inner.Close()
 
@@ -90,6 +126,7 @@ func mainVsockd() {
 		}
 		go handleConnection(conn)
 	}
+	return nil
 }
 
 func handleConnection(conn net.Conn) {
@@ -163,13 +200,21 @@ func controlConnection(c net.Conn, buf []byte) {
 		return
 	}
 
+	env := append([]string{}, entrypointEnv...)
+	env = append(env, jr.Env...)
+
+	args := append([]string{"nsenter", entrypointPid}, jr.Args...)
+
 	job := jobExecution{
-		cmd:       exec.Command(jr.Args[0], jr.Args[1:]...),
+		cmd: &exec.Cmd{
+			Path: "/sbin/nsenter",
+			Args: args,
+			Env:  env,
+		},
 		ctrlConn:  c,
 		withStdin: jr.WithStdin,
 		withTTY:   jr.WithTTY,
 	}
-	job.cmd.Env = append(os.Environ(), jr.Env...)
 
 	var id vs.JobID
 	_, err = rand.Read(id[:])

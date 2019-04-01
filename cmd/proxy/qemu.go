@@ -51,8 +51,8 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		bus = "ccw"
 	}
 
-	if vmdata.VsockCID != 0 {
-		device := fmt.Sprintf("vhost-vsock-%s,guest-cid=%#x%s", bus, vmdata.VsockCID, virtioArgs)
+	if vmdata.Vsockd.CID != 0 {
+		device := fmt.Sprintf("vhost-vsock-%s,guest-cid=%#x%s", bus, vmdata.Vsockd.CID, virtioArgs)
 		args = append(args, "-device", device)
 	}
 

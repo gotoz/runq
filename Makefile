@@ -1,6 +1,6 @@
 include make.rules
 
-SUBDIRS := cmd/proxy cmd/init cmd/runq cmd/runq-exec
+SUBDIRS := cmd/proxy cmd/init cmd/runq cmd/runq-exec cmd/nsenter cmd/vsockd
 TAR := runq-$(GIT_COMMIT).tar.gz
 
 .PHONY: all $(SUBDIRS) install image test tarfile release release-install clean distclean

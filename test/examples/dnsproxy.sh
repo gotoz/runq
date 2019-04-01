@@ -11,6 +11,7 @@ trap "cleanup; myexit" 0 2 15
 # Note:
 # /etc/resolv.conf of runq containers is written only once at container start.
 # Therefore the IP address of the DNS proxy container must not change.
+# /etc/resolv.conf must not contain a search option.
 
 # build dnsmasq image
 docker build -t dnsmasq -f $DIR/Dockerfile.dnsmasq .

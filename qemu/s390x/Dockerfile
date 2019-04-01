@@ -10,6 +10,7 @@ RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        busybox-static \
         ca-certificates \
         cpio \
         git \
@@ -51,6 +52,7 @@ RUN rm -f /lib/modules/*/build  \
     && echo zcrypt /lib/modules/*/kernel/drivers/s390/crypto/zcrypt_cex4.ko                  >> $QEMU_ROOT/kernel.conf
 
 ADD extract-vmlinux.sh /extract-vmlinux.sh
+
 RUN /extract-vmlinux.sh /boot/vmlinuz-*-generic $QEMU_ROOT/kernel
 
 RUN cp -d --preserve=all --parents \
@@ -59,6 +61,7 @@ RUN cp -d --preserve=all --parents \
     $QEMU_ROOT/ 2>&1 | grep -v 'omitting directory';:
 
 RUN cp -a --parents \
+    /bin/busybox \
     /lib/ld64.so.1 \
     /lib/modules \
     /usr/bin/qemu-system-s390x \

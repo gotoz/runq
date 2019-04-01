@@ -40,14 +40,6 @@ const (
 	RawFile                         // regular file used as block device
 )
 
-// Processtype defines different processes.
-type Processtype int
-
-const (
-	Entrypoint Processtype = iota
-	Vsockd
-)
-
 // Rlimit details
 type Rlimit struct {
 	Hard uint64
@@ -106,24 +98,30 @@ type User struct {
 
 // Certificates
 type Certificates struct {
-	CACert    []byte
-	VsockCert []byte
-	VsockKey  []byte
+	CACert []byte
+	Cert   []byte
+	Key    []byte
 }
 
-// Process contains information to start an application inside the VM.
-type Process struct {
+// Entrypoint contains information of entrypoint.
+type Entrypoint struct {
 	User
 	Args            []string
 	Capabilities    AppCapabilities
-	Certificates    Certificates
 	Cwd             string
 	Env             []string
 	NoNewPrivileges bool
-	Type            Processtype
 	Rlimits         map[string]Rlimit
 	SeccompGob      []byte
 	Terminal        bool
+}
+
+// Vsockd contains config data for the vsockd process.
+type Vsockd struct {
+	Certificates
+	EntrypointPid int
+	EntrypointEnv []string
+	CID           uint32
 }
 
 // DNS contains dns configuration.
@@ -133,8 +131,8 @@ type DNS struct {
 	Search  string
 }
 
-// Linux contains the configuration of the VM.
-type Linux struct {
+// Data contains all data needed by the VM.
+type Data struct {
 	APDevice    string
 	ContainerID string
 	CPU         int
@@ -148,14 +146,8 @@ type Linux struct {
 	Networks    []Network
 	NoExec      bool
 	Sysctl      map[string]string
-	VsockCID    uint32
-}
-
-// Data contains all data needed by the VM.
-type Data struct {
-	Certificates
-	Process
-	Linux
+	Entrypoint  Entrypoint
+	Vsockd      Vsockd
 }
 
 // Encode encodes a data struct into binary Gob.
@@ -178,10 +170,20 @@ func DecodeDataGob(buf []byte) (*Data, error) {
 	return v, nil
 }
 
-// DecodeProcessGob decodes a Gob binary buffer into a Process struct.
-func DecodeProcessGob(buf []byte) (*Process, error) {
+// DecodeEntrypointGob decodes a Gob binary buffer into a Entrypoint struct.
+func DecodeEntrypointGob(buf []byte) (*Entrypoint, error) {
 	dec := gob.NewDecoder(bytes.NewBuffer(buf))
-	v := new(Process)
+	v := new(Entrypoint)
+	if err := dec.Decode(v); err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+// DecodeVsockdGob decodes a Gob binary buffer into a Vsockd struct.
+func DecodeVsockdGob(buf []byte) (*Vsockd, error) {
+	dec := gob.NewDecoder(bytes.NewBuffer(buf))
+	v := new(Vsockd)
 	if err := dec.Decode(v); err != nil {
 		return nil, err
 	}

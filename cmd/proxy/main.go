@@ -208,11 +208,11 @@ func completeVmdata(vmdata *vm.Data) error {
 		if strings.HasPrefix(v, "HOME=") {
 			continue
 		}
-		vmdata.Env = append(vmdata.Env, v)
+		vmdata.Entrypoint.Env = append(vmdata.Entrypoint.Env, v)
 	}
 	vmdata.Hostname = os.Getenv("HOSTNAME")
-	home := util.UserHome(int(vmdata.UID))
-	vmdata.Env = append(vmdata.Env, fmt.Sprintf("HOME=%s", home))
+	home := util.UserHome(int(vmdata.Entrypoint.UID))
+	vmdata.Entrypoint.Env = append(vmdata.Entrypoint.Env, fmt.Sprintf("HOME=%s", home))
 
 	val, ok := os.LookupEnv("RUNQ_DNS")
 	if ok {
@@ -253,19 +253,21 @@ func completeVmdata(vmdata *vm.Data) error {
 		// In the unlikely event that there is already a container with a container ID that
 		// begins with the same 8 characters an error will be thrown: "unable to set guest
 		// cid..." and the container fails to start.
-		vmdata.VsockCID, err = vs.ContextID(vmdata.ContainerID)
+		vmdata.Vsockd.CID, err = vs.ContextID(vmdata.ContainerID)
 		if err != nil {
 			return err
 		}
-		if vmdata.CACert, err = ioutil.ReadFile("/qemu/certs/ca.pem"); err != nil {
+		if vmdata.Vsockd.CACert, err = ioutil.ReadFile("/qemu/certs/ca.pem"); err != nil {
 			return err
 		}
-		if vmdata.VsockCert, err = ioutil.ReadFile("/qemu/certs/cert.pem"); err != nil {
+		if vmdata.Vsockd.Cert, err = ioutil.ReadFile("/qemu/certs/cert.pem"); err != nil {
 			return err
 		}
-		if vmdata.VsockKey, err = ioutil.ReadFile("/qemu/certs/key.pem"); err != nil {
+		if vmdata.Vsockd.Key, err = ioutil.ReadFile("/qemu/certs/key.pem"); err != nil {
 			return err
 		}
+		vmdata.Vsockd.EntrypointEnv = make([]string, len(vmdata.Entrypoint.Env))
+		copy(vmdata.Vsockd.EntrypointEnv, vmdata.Entrypoint.Env)
 	}
 
 	os.Clearenv()

@@ -11,7 +11,7 @@ Key differences to other hypervisor-based runtimes:
 * no modification to existing Docker tools (dockerd, containerd, runc...)
 * coexistence of runq containers and regular runc containers
 * no extra state outside of Docker (no libvirt, no changes to /var/run/...)
-* simple init daemon, no systemd, no busybox
+* small init program, no systemd
 * no custom guest kernel or custom qemu needed
 * runs on x86_64 and s390x
 
@@ -19,8 +19,9 @@ Key differences to other hypervisor-based runtimes:
 ```
        runc container                   runq container
        +-------------------------+      +-------------------------+
+       |                         |      |                     VM  |
        |                         |      | +---------------------+ |
-       |                         |      | |                  VM | |
+       |                         |      | |                     | |
        |                         |      | |                     | |
        |                         |      | |                     | |
        |       application       |      | |     application     | |
@@ -152,6 +153,14 @@ docker run \
 
 ```
 
+### Container with Systemd
+To run images that have their own init program such as Systemd the entry-point string
+must contain `/sbin/init`. This ensures that `poweroff` and `reboot` executed inside
+the container work as expected.(The exit code of systemd must be handled differently.)
+
+See [test/examples/Dockerfile.systemd](test/examples/Dockerfile.systemd)
+and [test/examples/systemd.sh](test/examples/systemd.sh) for an example.
+
 ## runq Components
 ```
    docker cli
@@ -161,24 +170,23 @@ docker run \
               +--------------------------------------------------------+
               |                                                        |
   docker0     |                                                  VM    |
-     veth <------> veth                 +--------------------------+   |
-              |        `<--- macvtap ---|-------> eth0             |   |
+    `veth <------> veth                 +--------------------------+   |
+              |        `<--- macvtap ---|-> eth0                   |   |
+              |  proxy  <-----------------> init                   |   |
+  runq-exec <-----------tls----------------> `vsockd               |   |
+              |                         |---------------namespace--|   |
+ overlayfs <-----9pfs-------------------|-> /                      |   |
               |                         |                          |   |
-              |  proxy                  |      init                |   |
+ block dev <-----virtio-blk-------------|-> /dev/vdx               |   |
               |                         |                          |   |
-              |     msg, signals  <-----|------->   vport          |   |
               |                         |                          |   |
-              |     /overlayfs    <-----|------->   /app           |   |
               |                         |                          |   |
-              |     block dev     <-----|------->   /dev/xvda      |   |
-              |                         |                          |   |
-  runq-exec ----(TLS)----------------------->  vsockd              |   |
+              |                         |       application        |   |
               |                         |                          |   |
               |                         +--------------------------+   |
               |                         |       guest kernel       |   |
               |                         +--------------------------+   |
               |                                     qemu               |
-              |                                                        |
               +--------------------------------------------------------+
 
  --------------------------------------------------------------------------
@@ -188,7 +196,7 @@ docker run \
     - new docker runtime
 
 * cmd/proxy
-    - Docker entry point
+    - new Docker entry point
     - first process in container (PID 1)
     - configures and starts Qemu (network, disks, ...)
     - forwards signals to VM init
@@ -197,27 +205,26 @@ docker run \
 * cmd/init
     - first process in VM (PID 1)
     - initializes the VM guest (network, disks, ...)
-    - starts/stops target app (Docker entry point)
+    - starts entry-point in PID and Mount namespace
     - sends signals to target application
     - forwards application exit code back to proxy
 
 * cmd/runq-exec
     - command line utility similar to *docker exec*
 
+* cmd/nsenter
+    - enters the namespaces of entry-point for runq-exec
+
 * qemu
     - creates `/var/lib/runq/qemu`
     - read-only volume attached to every container
-    - contains proxy, qemu, kernel and initrd
+    - contains qemu rootfs (proxy, qemu, kernel and initrd)
 
 * initrd
-    - temporary root file system of the VM
-    - contains only init and a few kernel modules
+    - prepares the initrd to boot the VM
 
-* pkg/vm
-    - type definitions and configuration
-
-* pkg/util
-    - utiliy functions used accross all commands
+* pkg
+    - helper packages
 
 ## runq-exec
 runq-exec (`/var/lib/runq/runq-exec`) is a command line utility similar to **docker exec**. It allows running
@@ -298,8 +305,8 @@ See man qemu(1) for details about different cache types.
 
 Syntax:
 ```
---volume <image  name>:/dev/runq/<id>/<cache type>[/<filesystem type>/<mount point>]
---device <device name>:/dev/runq/<id>/<cache type>[/<filesystem type>/<mount point>]
+--volume <image  name>:/dev/runq/<id>/<cache type>[/<filesystem type><mount point>]
+--device <device name>:/dev/runq/<id>/<cache type>[/<filesystem type><mount point>]
 ```
 
 `<id>` is used to create symbolic links inside the VM guest that point to the Qemu Virtio device

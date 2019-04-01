@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/gotoz/runq/pkg/util"
@@ -37,11 +36,8 @@ func init() {
 
 func main() {
 	switch os.Args[0] {
-	case "child":
-		mainChild()
-		return
-	case "vsockd":
-		mainVsockd()
+	case "entrypoint":
+		mainEntrypoint()
 		return
 	}
 
@@ -55,6 +51,7 @@ func main() {
 }
 
 func runInit() error {
+	runtime.LockOSThread()
 	if err := mountInit(); err != nil {
 		return err
 	}
@@ -92,26 +89,17 @@ func runInit() error {
 		shutdown(1, fmt.Sprintf("binary missmatch proxy:%q init:%q", vmdata.GitCommit, gitCommit))
 	}
 
-	if !vmdata.Terminal {
+	if !vmdata.Entrypoint.Terminal {
 		if _, err := terminal.MakeRaw(0); err != nil {
 			return errors.WithStack(err)
 		}
 	}
 
-	if err := mountRootfs(vmdata.Mounts); err != nil {
+	if err := mount9pfs(vmdata.Mounts); err != nil {
 		return err
 	}
 
-	if err := mountRootfsCgroups(); err != nil {
-		return err
-	}
-
-	// Remove empty mountpoint.
-	if err := os.Remove("/rootfs/qemu"); err != nil && !os.IsNotExist(err) {
-		return errors.WithStack(err)
-	}
-
-	if vmdata.VsockCID != 0 {
+	if vmdata.Vsockd.CID != 0 {
 		if err := loadKernelModules("vsock", "/rootfs"); err != nil {
 			return err
 		}
@@ -138,60 +126,100 @@ func runInit() error {
 		}
 	}
 
-	if err := chroot("/rootfs"); err != nil {
-		return err
-	}
-
-	if err := maskPath(vm.MaskedPaths); err != nil {
-		return err
-	}
-
-	if err := readonlyPath(vm.ReadonlyPaths); err != nil {
-		return err
-	}
-
-	if err := prepareDeviceFiles(int(vmdata.UID)); err != nil {
-		return err
-	}
-
-	forker := newForker(vmdata.Process)
-
 	// Start reaper to wait4 zombie processes.
 	go reaper()
 
-	// Start vsock daemon.
-	if vmdata.VsockCID != 0 {
-		vsockd := forker.forkVsockd(vmdata.Certificates)
-		if err := vsockd.start(); err != nil {
-			shutdown(util.ErrorToRc(err))
-		}
-		if err := ioutil.WriteFile(fmt.Sprintf("/proc/%d/oom_score_adj", vsockd.pid), []byte("-1000"), 0644); err != nil {
-			return err
-		}
-		go vsockd.wait()
-	}
-
-	// Start entry point process.
-	entryPoint := forker.forkEntryPoint()
-	if err := entryPoint.start(); err != nil {
+	// Start entrypoint process.
+	entrypoint, err := newEntrypoint(vmdata.Entrypoint)
+	if err != nil {
 		shutdown(util.ErrorToRc(err))
 	}
-	go entryPoint.wait()
+	pidEntrypoint := entrypoint.Process.Pid
+	go wait4Entrypoint(pidEntrypoint, vmdata.Entrypoint.Args[0])
 
-	// Main loop to process messages received from proxy.
+	// Start vsockd process.
+	if vmdata.Vsockd.CID != 0 {
+		vmdata.Vsockd.EntrypointPid = pidEntrypoint
+		vmdata.Vsockd.EntrypointEnv = vmdata.Entrypoint.Env
+		vsockd, err := newVsockd(vmdata.Vsockd, pidEntrypoint)
+		if err != nil {
+			shutdown(util.ErrorToRc(err))
+		}
+		if err := ioutil.WriteFile(fmt.Sprintf("/proc/%d/oom_score_adj", vsockd.Process.Pid), []byte("-1000"), 0644); err != nil {
+			shutdown(1, "can't adjust oom score of vsockd")
+		}
+		go wait4Vsockd(vsockd.Process.Pid)
+	}
+
+	// Main loop to process messages from proxy.
 	for {
 		msg := <-msgChan
 		switch msg.Type {
 		case vm.Signal:
 			// Forward signal to application.
-			sig := syscall.Signal(int(msg.Data[0]))
-			if err := entryPoint.signal(sig); err != nil {
-				log.Printf("send signal %#v to %d: %v", sig, entryPoint.pid, err)
+			sig := unix.Signal(int(msg.Data[0]))
+			if err := signalProcess(pidEntrypoint, sig); err != nil {
+				log.Printf("send signal %#v to %d: %v", sig, pidEntrypoint, err)
 			}
 		default:
 			return errors.Errorf("received invalid message: %v", msg)
 		}
 	}
+}
+
+func wait4Vsockd(pid int) {
+	var wstatus unix.WaitStatus
+	_, err := unix.Wait4(pid, &wstatus, 0, nil)
+
+	switch {
+	case wstatus.Exited():
+		return
+	case wstatus.Signaled():
+		if wstatus.Signal() == unix.SIGKILL {
+			// regular shoutdown, don't print message
+			return
+		}
+	}
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+// wait4Entrypoint waits for the entrypoint process to finsh and then call
+// shutdown with an exit code following Docker exit codes which in fact
+// follow Bash exit codes.
+// If the entrypoint is /sbin/init (e.g. Systemd) the exit code must be treated
+// differently. Init terminates by sending SIGINT or SIGHUP to itself.
+//   poweroff, halt -> SIGINT -> no restart
+//   reboot         -> SIGHUP -> restart
+func wait4Entrypoint(pid int, arg0 string) {
+	var wstatus unix.WaitStatus
+	_, err := unix.Wait4(pid, &wstatus, 0, nil)
+	switch {
+	case err != nil:
+		shutdown(1, fmt.Sprintf("%+v", errors.WithStack(err)))
+	case wstatus.Exited():
+		shutdown(uint8(wstatus.ExitStatus()), "")
+	case wstatus.Signaled():
+		sig := wstatus.Signal()
+		if strings.Contains(arg0, "/sbin/init") {
+			switch sig {
+			case unix.SIGINT:
+				shutdown(0, "")
+			default:
+				shutdown(1, "")
+			}
+		}
+		shutdown(128+uint8(sig), "")
+	}
+}
+
+func signalProcess(pid int, sig unix.Signal) error {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return proc.Signal(sig)
 }
 
 func vportDevice() (string, error) {
@@ -211,37 +239,6 @@ func vportDevice() (string, error) {
 		return "", errors.Errorf("Found %d vports. Expected 1", len(vports))
 	}
 	return "/dev/" + vports[0].Name(), nil
-}
-
-func prepareDeviceFiles(uid int) error {
-	if err := os.Chown("/dev/console", uid, 5); err != nil {
-		return errors.WithStack(err)
-	}
-	if err := os.Chmod("/dev/console", 0620); err != nil {
-		return errors.WithStack(err)
-	}
-
-	m := map[string]string{
-		"/proc/kcore":     "/dev/core",
-		"/proc/self/fd":   "/dev/fd",
-		"/proc/self/fd/0": "/dev/stdin",
-		"/proc/self/fd/1": "/dev/stdout",
-		"/proc/self/fd/2": "/dev/stderr",
-	}
-	for k, v := range m {
-		if err := os.Symlink(k, v); err != nil {
-			return errors.Wrapf(err, "Symlink %s %s:", k, v)
-		}
-	}
-
-	vports, err := filepath.Glob("/dev/vport*")
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	for _, f := range vports {
-		os.Remove(f)
-	}
-	return nil
 }
 
 func parseCmdline() {
@@ -288,22 +285,6 @@ func loadKernelModules(kind, prefix string) error {
 	return errors.WithStack(scanner.Err())
 }
 
-func chroot(dir string) error {
-	for _, d := range []string{"/proc", "/sys", "/dev"} {
-		if err := unix.Unmount(d, syscall.MNT_DETACH); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	if err := os.Chdir(dir); err != nil {
-		return errors.WithStack(err)
-	}
-	if err := unix.Mount(dir, "/", "", unix.MS_MOVE, ""); err != nil {
-		return errors.WithStack(err)
-	}
-	err := unix.Chroot(".")
-	return errors.WithStack(err)
-}
-
 func setSysctl(vmdataSysctl map[string]string) error {
 	for k, v := range vm.SysctlDefault {
 		if err := util.SetSysctl(k, v); err != nil {
@@ -343,14 +324,14 @@ func setupAPDevice() error {
 	return nil
 }
 
-var once sync.Once
+var onceShutdown sync.Once
 
 func shutdown(rc uint8, msg string) {
-	once.Do(func() {
+	onceShutdown.Do(func() {
 		if msg != "" {
 			log.Print(msg)
 		}
-		// Send exit code of grandchild to proxy.
+		// Send exit code of entrypoint to proxy.
 		select {
 		case ackChan <- rc:
 		case <-time.After(time.Millisecond * 100):

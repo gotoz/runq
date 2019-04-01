@@ -22,7 +22,4 @@ checkrc $? 42 "custom exit code rc=42"
 docker run --runtime runq --rm --name $(rand_name) $image sh -c "exit -1;"
 checkrc $? 2 "illegal exit code"
 
-docker run --runtime runq --rm --name $(rand_name) $image sh -c 'kill -SIGUSR1 $$'
-checkrc $? 138 "process killed by signal"
-
 myexit

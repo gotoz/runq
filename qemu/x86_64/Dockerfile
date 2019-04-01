@@ -10,6 +10,7 @@ RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        busybox-static \
         ca-certificates \
         cpio \
         git \
@@ -55,6 +56,7 @@ RUN cp -d --preserve=all --parents \
   $QEMU_ROOT/ 2>&1 | grep -v 'omitting directory';:
 
 RUN cp -a --parents \
+    /bin/busybox \
     /lib64 \
     /lib/modules \
     /usr/bin/qemu-system-x86_64 \

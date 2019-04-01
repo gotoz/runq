@@ -36,11 +36,18 @@ func mountInit() error {
 			Fstype: "sysfs",
 			Flags:  unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
 		},
+		{
+			Source: "devpts",
+			Target: "/dev/pts",
+			Fstype: "devpts",
+			Flags:  unix.MS_NOSUID | unix.MS_NOEXEC,
+			Data:   "newinstance,gid=5,mode=0620,ptmxmode=000",
+		},
 	}
 	return mount(mounts)
 }
 
-func mountRootfs(extraMounts []vm.Mount) error {
+func mount9pfs(extraMounts []vm.Mount) error {
 	mounts := []vm.Mount{
 		{
 			Source: "rootfs",
@@ -49,6 +56,22 @@ func mountRootfs(extraMounts []vm.Mount) error {
 			Flags:  unix.MS_NODEV | unix.MS_DIRSYNC,
 			Data:   "trans=virtio,cache=mmap",
 		},
+		{
+			Source: "/rootfs/lib/modules",
+			Target: "/lib/modules",
+			Fstype: "",
+			Flags:  unix.MS_BIND,
+		},
+	}
+	for _, m := range extraMounts {
+		m.Target = "/rootfs" + m.Target
+		mounts = append(mounts, m)
+	}
+	return mount(mounts)
+}
+
+func mountRootfs() error {
+	mounts := []vm.Mount{
 		{
 			Source: "proc",
 			Target: "/rootfs/proc",
@@ -102,14 +125,10 @@ func mountRootfs(extraMounts []vm.Mount) error {
 		},
 	}
 
-	for _, m := range extraMounts {
-		m.Target = "/rootfs" + m.Target
-		mounts = append(mounts, m)
-	}
 	return mount(mounts)
 }
 
-func mountRootfsCgroups() error {
+func mountCgroups() error {
 	if !util.FileExists("/proc/cgroups") {
 		return nil
 	}
@@ -119,7 +138,7 @@ func mountRootfsCgroups() error {
 	mounts := []vm.Mount{
 		{
 			Source: "tmpfs",
-			Target: "/rootfs/sys/fs/cgroup",
+			Target: "/sys/fs/cgroup",
 			Fstype: "tmpfs",
 			Flags:  unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
 			Data:   "mode=0755",
@@ -143,7 +162,7 @@ func mountRootfsCgroups() error {
 		}
 		mounts = append(mounts, vm.Mount{
 			Source: "cgroup",
-			Target: "/rootfs/sys/fs/cgroup/" + field[0],
+			Target: "/sys/fs/cgroup/" + field[0],
 			Fstype: "cgroup",
 			Flags:  unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
 			Data:   field[0],

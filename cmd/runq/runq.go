@@ -71,8 +71,6 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 		}
 	}
 
-	var vmdata vm.Data
-
 	//
 	// Linux
 	//
@@ -87,7 +85,7 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 		}
 		dns.Server = append(dns.Server, v)
 	}
-	vmdata.Linux = vm.Linux{
+	vmdata := vm.Data{
 		ContainerID: strings.TrimSpace((context.Args()[0] + strings.Repeat(" ", 12))[:12]),
 		CPU:         context.GlobalInt("cpu"),
 		DNS:         dns,
@@ -109,21 +107,20 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 	}
 
 	//
-	// Process
+	// Entrypoint
 	//
-	vmdata.Process = vm.Process{
+	vmdata.Entrypoint = vm.Entrypoint{
 		Args:            spec.Process.Args,
 		Cwd:             spec.Process.Cwd,
 		NoNewPrivileges: spec.Process.NoNewPrivileges,
 		Terminal:        spec.Process.Terminal,
-		Type:            vm.Entrypoint,
 	}
 
 	spec.Process.ApparmorProfile = ""
 	spec.Process.SelinuxLabel = ""
 	spec.Process.Env = append(spec.Process.Env, "RUNQ_COMMIT="+runqCommit)
 
-	vmdata.Process.Capabilities = vm.AppCapabilities{
+	vmdata.Entrypoint.Capabilities = vm.AppCapabilities{
 		Ambient:     spec.Process.Capabilities.Ambient,
 		Bounding:    spec.Process.Capabilities.Bounding,
 		Effective:   spec.Process.Capabilities.Effective,
@@ -147,20 +144,20 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 		if err != nil {
 			return err
 		}
-		vmdata.Process.SeccompGob = gob
+		vmdata.Entrypoint.SeccompGob = gob
 		spec.Linux.Seccomp = nil
 	}
 
-	vmdata.Process.Rlimits = make(map[string]vm.Rlimit)
+	vmdata.Entrypoint.Rlimits = make(map[string]vm.Rlimit)
 	for _, v := range spec.Process.Rlimits {
-		vmdata.Process.Rlimits[v.Type] = vm.Rlimit{Hard: v.Hard, Soft: v.Soft}
+		vmdata.Entrypoint.Rlimits[v.Type] = vm.Rlimit{Hard: v.Hard, Soft: v.Soft}
 	}
 	spec.Process.Rlimits = nil
 
 	//
 	// User
 	//
-	vmdata.User = vm.User{
+	vmdata.Entrypoint.User = vm.User{
 		UID:            spec.Process.User.UID,
 		GID:            spec.Process.User.GID,
 		AdditionalGids: spec.Process.User.AdditionalGids,
@@ -174,7 +171,7 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 	if err != nil {
 		return fmt.Errorf("vm.Encode(vmdata): %v", err)
 	}
-	spec.Process.Args = []string{runqStartcmd, "-name", vmdata.Linux.ContainerID, vmdataB64}
+	spec.Process.Args = []string{runqStartcmd, "-name", vmdata.ContainerID, vmdataB64}
 
 	return validateProcessSpec(spec.Process)
 }
@@ -303,7 +300,7 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 
 			// /dev/vfio/<nr>
 			devpath := "/sys/devices/vfio_ap/matrix/" + uuid
-			vmdata.Linux.APDevice = devpath
+			vmdata.APDevice = devpath
 
 			s, err := os.Readlink(devpath + "/iommu_group")
 			if err != nil {

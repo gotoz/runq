@@ -56,7 +56,7 @@ func setupNetwork(networks []vm.Network) error {
 			}
 		}
 		if nw.Name == "" {
-			return errors.Wrapf(err, "no vm data for %s", attr.Name)
+			return errors.Errorf("no vm data for %s", attr.Name)
 		}
 
 		// Rename links back to ethX names.

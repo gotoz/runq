@@ -99,7 +99,7 @@ func runInit() error {
 		return err
 	}
 
-	if vmdata.Vsockd.CID != 0 {
+	if !vmdata.NoExec {
 		if err := loadKernelModules("vsock", "/rootfs"); err != nil {
 			return err
 		}

@@ -142,7 +142,11 @@ func run(vmdataB64 string) (int, error) {
 	case <-time.After(time.Second * 10):
 		// init didn't send ack message in time
 		cmd.Process.Kill()
-		return 1, fmt.Errorf("no ack msg from init within 10 sec")
+		msg := "no ack msg from init within 10 sec"
+		if !vmdata.NoExec {
+			msg += ". Not enough entropy available?"
+		}
+		return 1, fmt.Errorf(msg)
 	}
 
 	sigChan := make(chan os.Signal, 1)
@@ -248,7 +252,10 @@ func completeVmdata(vmdata *vm.Data) error {
 		return err
 	}
 
-	if _, ok := os.LookupEnv("RUNQ_NOEXEC"); !(ok || vmdata.NoExec) {
+	if _, ok := os.LookupEnv("RUNQ_NOEXEC"); ok {
+		vmdata.NoExec = true
+	}
+	if !vmdata.NoExec {
 		// CID (uint32) is taken from the first 8 characters of the Docker container ID.
 		// In the unlikely event that there is already a container with a container ID that
 		// begins with the same 8 characters an error will be thrown: "unable to set guest

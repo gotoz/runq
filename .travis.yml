@@ -2,15 +2,14 @@ language: go
 go:
     - "1.x"
 go_import_path: github.com/gotoz/runq
-dist: trusty
+dist: xenial
 sudo: required
-serivices:
+services:
     - docker
+before_install:
+    - sudo apt-get install -y libseccomp-dev
 install:
     - go get -d github.com/opencontainers/runc
-    - wget https://github.com/seccomp/libseccomp/releases/download/v2.3.3/libseccomp-2.3.3.tar.gz
-    - tar -xzvf libseccomp-2.3.3.tar.gz
-    - pushd libseccomp-2.3.3 && ./configure --prefix=/usr && make && sudo make install && popd
 script:
     - make release
     - sudo make release-install

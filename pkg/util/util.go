@@ -14,8 +14,6 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/pkg/errors"
-
 	"golang.org/x/sys/unix"
 )
 
@@ -33,7 +31,7 @@ func Mknod(path, devtype string, fmode uint32, major, minor int) error {
 	dir := filepath.Dir(path)
 	if !DirExists(dir) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("Mkdir %s failed: %v", path, err)
 		}
 	}
 	var mode uint32
@@ -43,22 +41,26 @@ func Mknod(path, devtype string, fmode uint32, major, minor int) error {
 	case "c":
 		mode = unix.S_IFCHR | fmode
 	default:
-		return errors.Errorf("type %s not supported", devtype)
+		return fmt.Errorf("type %s not supported", devtype)
 	}
 
 	umask := unix.Umask(0)
 	defer unix.Umask(umask)
 
 	dev := int(minor&0xfff00<<12 | major&0xfff<<8 | minor&0xff)
-	err := unix.Mknod(path, mode, dev)
-	return errors.Wrapf(err, "Mknod(%s)", path)
+	if err := unix.Mknod(path, mode, dev); err != nil {
+		return fmt.Errorf("Mknod %s failed: %v", path, err)
+	}
+	return nil
 }
 
 // SetSysctl sets a syscontrol.
 func SetSysctl(name string, value string) error {
 	path := "/proc/sys/" + strings.Replace(name, ".", "/", -1)
-	err := ioutil.WriteFile(path, []byte(value), 0644)
-	return errors.Wrapf(err, "WriteFile %s", path)
+	if err := ioutil.WriteFile(path, []byte(value), 0644); err != nil {
+		return fmt.Errorf("WriteFile %s failed: %v", path, err)
+	}
+	return nil
 }
 
 // FileExists returns whether the given regular file exists.
@@ -95,21 +97,20 @@ func Insmod(path string, args []string) error {
 	return fmt.Errorf("insmod %s failed: %v", path, os.NewSyscallError("SYS_FINIT_MODULE", errno))
 }
 
-// MajorMinor returns major and minor device number for a given syspath.
-func MajorMinor(syspath string) (int, int, error) {
+// MajorMinor returns major and minor device number for a given dev file.
+func MajorMinor(path string) (int, int, error) {
 	// cat /sys/class/virtio-ports/vport0p1/dev
 	// 252:1
-	buf, err := ioutil.ReadFile(syspath)
+	buf, err := ioutil.ReadFile(path)
 	if err != nil {
-		return 0, 0, errors.Wrapf(err, "ReadFile %s", syspath)
+		return 0, 0, fmt.Errorf("ReadFile %s failed: %v", path, err)
 	}
-	s := strings.Split(strings.TrimSpace(string(buf)), ":")
-	major, err := strconv.Atoi(s[0])
-	if err != nil {
-		return 0, 0, errors.Wrapf(err, "Atoi %s", s[0])
+
+	var major, minor int
+	if n, err := fmt.Sscanf(string(buf), "%d:%d", &major, &minor); err != nil || n != 2 {
+		return 0, 0, fmt.Errorf("Sscanf %s failed: %v", path, err)
 	}
-	minor, err := strconv.Atoi(s[1])
-	return major, minor, errors.Wrapf(err, "Atoi %s", s[1])
+	return major, minor, nil
 }
 
 // UserHome returns the home directory for a given userid and the

@@ -2,25 +2,13 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"math/rand"
-	"os"
 	"runtime"
 	"strconv"
-	"strings"
-	"time"
 
-	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
-
-	"github.com/pkg/errors"
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
+func qemuConfig(vmdata *vm.Data, socket string) ([]string, error) {
 	var cpuArgs, virtioArgs string
 	if vmdata.NestedVM {
 		cpuArgs = ",pmu=off"
@@ -91,7 +79,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		case vm.BlockDevice, vm.RawFile:
 			format = "raw"
 		default:
-			return nil, nil, fmt.Errorf("invalid disk type")
+			return nil, fmt.Errorf("invalid disk type")
 		}
 
 		aio := "threads"
@@ -110,50 +98,13 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, []*os.File, error) {
 		args = append(args, "-device", "vfio-ap,sysfsdev="+vmdata.APDevice)
 	}
 
-	// 0:stdin, 1:stdout, 2:stderr, 3:firstTAP, 4:2ndTAP ....
-	var extraFiles []*os.File
-	var fd = 3
 	for i, nw := range vmdata.Networks {
-		name, err := createTapDevice(nw.MvtName, nw.MvtIndex)
-		if err != nil {
-			return nil, nil, err
-		}
-		f, err := os.OpenFile(name, os.O_RDWR, 0600|os.ModeExclusive)
-		if err != nil {
-			return nil, nil, errors.WithStack(err)
-		}
-		extraFiles = append(extraFiles, f)
-
+		fd := i + 3 // 0=stdin, 1=stdout, 2=stderr, 3=1st.TAP, 4=2nd.TAP ...
 		args = append(args,
 			"-device", fmt.Sprintf("virtio-net-%s,netdev=net%d,mac=%s%s", bus, i, nw.MacAddress, virtioArgs),
 			"-netdev", fmt.Sprintf("tap,id=net%d,vhost=on,fd=%d", i, fd),
 		)
-		fd++
 	}
 
-	return args, extraFiles, nil
-}
-
-func createTapDevice(name string, index int) (string, error) {
-	sys := fmt.Sprintf("/sys/devices/virtual/net/%s/tap%d/dev", name, index)
-	buf, err := ioutil.ReadFile(sys)
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	s := strings.Split(strings.TrimSpace(string(buf)), ":")
-	major, err := strconv.Atoi(s[0])
-	if err != nil {
-		return "", errors.Wrapf(err, "Atoi %s", s[0])
-	}
-	minor, err := strconv.Atoi(s[1])
-	if err != nil {
-		return "", errors.Wrapf(err, "Atoi %s", s[1])
-	}
-
-	path := "/dev/" + name
-	if err := util.Mknod(path, "c", 0600, major, minor); err != nil {
-		return "", err
-	}
-	return path, nil
+	return args, nil
 }

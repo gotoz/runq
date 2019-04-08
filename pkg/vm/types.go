@@ -59,12 +59,11 @@ type AppCapabilities struct {
 // Network defines a network interface.
 type Network struct {
 	Name       string
-	MvtName    string
-	MvtIndex   int
 	MacAddress string
 	MTU        int
 	Addrs      []netlink.Addr
 	Gateway    net.IP
+	TapDevice  string
 }
 
 // Disk defines a disk.

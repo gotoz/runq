@@ -97,9 +97,18 @@ func run(vmdataB64 string) (int, error) {
 		return 1, err
 	}
 
-	args, extraFiles, err := qemuConfig(vmdata, vmsocket)
+	args, err := qemuConfig(vmdata, vmsocket)
 	if err != nil {
 		return 1, err
+	}
+
+	var extraFiles []*os.File
+	for _, nw := range vmdata.Networks {
+		f, err := os.OpenFile(nw.TapDevice, os.O_RDWR, 0600|os.ModeExclusive)
+		if err != nil {
+			return 1, errors.WithStack(err)
+		}
+		extraFiles = append(extraFiles, f)
 	}
 
 	cmd := exec.Command(args[0], args[1:]...)

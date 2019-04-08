@@ -17,6 +17,8 @@ import (
 
 func setupNetwork() ([]vm.Network, error) {
 	var networks []vm.Network
+	var idx int
+
 	links, err := netlink.LinkList()
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -29,14 +31,14 @@ func setupNetwork() ([]vm.Network, error) {
 			continue
 		}
 
-		attr := link.Attrs()
+		linkAttrs := link.Attrs()
 
 		addrs, err := netlink.AddrList(link, netlink.FAMILY_ALL)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		if len(addrs) == 0 {
-			return nil, errors.Errorf("no ip found on %s", attr.Name)
+			return nil, errors.Errorf("no ip found on %s", linkAttrs.Name)
 		}
 
 		var gateway net.IP
@@ -62,10 +64,10 @@ func setupNetwork() ([]vm.Network, error) {
 			return nil, errors.WithStack(err)
 		}
 
-		// create macvtap device
+		// create macvtap interface
 		mvtAttrs := netlink.NewLinkAttrs()
-		mvtAttrs.Name = fmt.Sprintf("tap%s", util.RandStr(9))
-		mvtAttrs.ParentIndex = attr.Index
+		mvtAttrs.Name = fmt.Sprintf("tap%d", idx)
+		mvtAttrs.ParentIndex = linkAttrs.Index
 		mvt := &netlink.Macvtap{
 			Macvlan: netlink.Macvlan{
 				LinkAttrs: mvtAttrs,
@@ -74,34 +76,54 @@ func setupNetwork() ([]vm.Network, error) {
 		}
 
 		if err := netlink.LinkAdd(mvt); err != nil {
-			return networks, errors.Wrap(err, "failed to add macvtap device")
+			return nil, errors.Wrap(err, "failed to add macvtap interface")
 		}
 
 		macvtap, err := netlink.LinkByName(mvtAttrs.Name)
 		if err != nil {
 			return nil, errors.Wrapf(err, "LinkByName %s", mvtAttrs.Name)
 		}
+		mvtAttrs = *macvtap.Attrs()
 
 		if err := netlink.LinkSetUp(macvtap); err != nil {
 			return nil, errors.Wrapf(err, "LinkSetUp %s:", mvtAttrs.Name)
 		}
 
 		if err := netlink.LinkSetUp(link); err != nil {
-			return nil, errors.Wrapf(err, "LinkSetUp %s", attr.Name)
+			return nil, errors.Wrapf(err, "LinkSetUp %s", linkAttrs.Name)
+		}
+
+		tapDevice, err := createTapDevice(mvtAttrs.Name, mvtAttrs.Index)
+		if err != nil {
+			return nil, err
 		}
 
 		networks = append(networks, vm.Network{
-			Name:       attr.Name,
-			MvtName:    mvtAttrs.Name,
-			MvtIndex:   macvtap.Attrs().Index,
-			MacAddress: macvtap.Attrs().HardwareAddr.String(),
-			MTU:        attr.MTU,
+			Name:       linkAttrs.Name,
+			MacAddress: mvtAttrs.HardwareAddr.String(),
+			MTU:        linkAttrs.MTU,
 			Addrs:      addrs,
 			Gateway:    gateway,
+			TapDevice:  tapDevice,
 		})
+
+		idx++
 	}
 
 	return networks, nil
+}
+
+func createTapDevice(name string, index int) (string, error) {
+	syspath := fmt.Sprintf("/sys/devices/virtual/net/%s/tap%d/dev", name, index)
+	major, minor, err := util.MajorMinor(syspath)
+	if err != nil {
+		return "", err
+	}
+	devpath := "/dev/" + name
+	if err := util.Mknod(devpath, "c", 0600, major, minor); err != nil {
+		return "", err
+	}
+	return devpath, nil
 }
 
 func writeResolvConf(dns vm.DNS) error {

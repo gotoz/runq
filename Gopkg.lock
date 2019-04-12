@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:23ea7327e52e14b2b0eff80a8a4b9fa522922079e5afa4b969b8ca0ad182c3a1"
+  name = "code.cloudfoundry.org/bytefmt"
+  packages = ["."]
+  pruneopts = ""
+  revision = "2aa6f33b730c79971cfc3c742f279195b0abc627"
+
+[[projects]]
   digest = "1:47dc4f6ee8a7dda99b516b56cb7fcc4f53ca94756263bdcea55c918a60126062"
   name = "github.com/kr/pty"
   packages = ["."]
@@ -96,6 +104,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "code.cloudfoundry.org/bytefmt",
     "github.com/kr/pty",
     "github.com/mdlayher/vsock",
     "github.com/opencontainers/runtime-spec/specs-go",

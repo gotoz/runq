@@ -8,8 +8,11 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// MinMem declares the minimum amount of RAM a VM in MiB.
+// MinMem declares the minimum amount of RAM of a VM in MiB.
 const MinMem = 64
+
+// MinEmbeddedDiskSize is the minimum size of an embedded disk in byte.
+const MinEmbeddedDiskSize = 128 * 1024 * 1024 // 128 MiB
 
 // KernelParameters defines kernel boot parameters.
 const KernelParameters = "console=ttyS0 panic=1 module.sig_enforce=1 loglevel=3"

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
@@ -185,8 +187,23 @@ func mount(mounts []vm.Mount) error {
 				return err
 			}
 		}
-		if err := unix.Mount(m.Source, m.Target, m.Fstype, uintptr(m.Flags), m.Data); err != nil {
-			return fmt.Errorf("Mount failed: src:%s dst:%s fs:%s id:%s reason: %v", m.Source, m.Target, m.Fstype, m.ID, err)
+		flags := m.Flags &^ syscall.MS_RDONLY
+		if err := unix.Mount(m.Source, m.Target, m.Fstype, uintptr(flags), m.Data); err != nil {
+			return fmt.Errorf("Mount failed: src:%s dst:%s fs:%s id:%s data:%s reason: %v", m.Source, m.Target, m.Fstype, m.ID, m.Data, err)
+		}
+		if m.Mode != "" {
+			i, err := strconv.ParseUint(m.Mode, 8, 32)
+			if err != nil {
+				return fmt.Errorf("parse mode %q failed: %v", m.Mode, err)
+			}
+			if err := unix.Chmod(m.Target, uint32(i)); err != nil {
+				return err
+			}
+		}
+		if m.Flags&syscall.MS_RDONLY != 0 {
+			if err := unix.Mount("", m.Target, "", uintptr(m.Flags|unix.MS_REMOUNT), ""); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

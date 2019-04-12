@@ -34,10 +34,10 @@ type Msg struct {
 type Disktype int
 
 const (
-	DisktypeUnknown Disktype = iota // disk type is not known
-	BlockDevice                     // regular block device
-	Qcow2Image                      // Qcow2 image
-	RawFile                         // regular file used as block device
+	DisktypeUnknown     Disktype = iota // disk type is not known
+	DisktypeBlockDevice                 // regular block device
+	DisktypeQcow2Image                  // Qcow2 image
+	DisktypeRawFile                     // regular file used as block device
 )
 
 // Rlimit details
@@ -68,14 +68,17 @@ type Network struct {
 
 // Disk defines a disk.
 type Disk struct {
-	Cache  string
-	Dir    string
-	Fstype string
-	ID     string
-	Mount  bool
-	Path   string
-	Serial string
-	Type   Disktype
+	Cache        string
+	Dir          string
+	Fstype       string
+	ID           string
+	Label        string
+	Mount        bool
+	MountOptions []string
+	Path         string
+	Serial       string
+	Size         uint64
+	Type         Disktype
 }
 
 // Mount defines a mount point.
@@ -84,6 +87,7 @@ type Mount struct {
 	Flags  int
 	Fstype string
 	ID     string
+	Mode   string
 	Source string
 	Target string
 }
@@ -132,21 +136,22 @@ type DNS struct {
 
 // Data contains all data needed by the VM.
 type Data struct {
-	APDevice    string
-	ContainerID string
-	CPU         int
-	Disks       []Disk
-	DNS         DNS
-	GitCommit   string
-	Hostname    string
-	Mem         int
-	Mounts      []Mount
-	NestedVM    bool
-	Networks    []Network
-	NoExec      bool
-	Sysctl      map[string]string
-	Entrypoint  Entrypoint
-	Vsockd      Vsockd
+	APDevice      string
+	ContainerID   string
+	CPU           int
+	EmbeddedDisks []Disk
+	ExternalDisks []Disk
+	DNS           DNS
+	GitCommit     string
+	Hostname      string
+	Mem           int
+	Mounts        []Mount
+	NestedVM      bool
+	Networks      []Network
+	NoExec        bool
+	Sysctl        map[string]string
+	Entrypoint    Entrypoint
+	Vsockd        Vsockd
 }
 
 // Encode encodes a data struct into binary Gob.

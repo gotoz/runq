@@ -13,6 +13,7 @@ RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
         busybox-static \
         ca-certificates \
         cpio \
+        e2fsprogs \
         git \
         golang \
         libseccomp-dev \
@@ -62,8 +63,16 @@ RUN cp -d --preserve=all --parents \
 
 RUN cp -a --parents \
     /bin/busybox \
+    /etc/mtab \
     /lib/ld64.so.1 \
     /lib/modules \
+    /sbin/e2fsck \
+    /sbin/fsck.ext2 \
+    /sbin/fsck.ext4 \
+    /sbin/mke2fs \
+    /sbin/mkfs.ext2 \
+    /sbin/mkfs.ext4 \
+    /sbin/resize2fs \
     /usr/bin/qemu-system-s390x \
     /usr/lib/s390x-linux-gnu/pulseaudio \
     /usr/lib/s390x-linux-gnu/qemu \

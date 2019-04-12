@@ -123,7 +123,7 @@ docker run --runtime runq --cap-add sys_module -ti busybox sh -c "modprobe brd &
 
 ```
 
-full example PostgreSQL with custom storage
+full example PostgreSQL with external storage
 ```
 dd if=/dev/zero of=data.img bs=1M count=200
 mkfs.ext4 -F data.img
@@ -294,11 +294,14 @@ The environment variables are `RUNQ_DNS`, `RUNQ_DNS_OPT` and `RUNQ_DNS_SEARCH`.
 Environment variables have priority over global options.
 
 
-## Storage
+### External Storage
 Extra storage can be added in the form of Qcow2 images, raw file images or
-regular block devices. Storage devices will be mounted automatically if
+regular block devices. The storage is located outside of the container filesystem
+and therefore will survive even after a runq container has been deleted.
+
+Storage devices will be mounted automatically if
 a filesytem and a mount point has been specified.
-Supported filesystems are ext2, ext3, ext4, xfs and btrfs.
+Supported filesystems are ext2, ext3, ext4 and xfs.
 Cache type must be writeback, writethrough, none or unsafe.
 Cache type "none" is recommended for filesystems that support `O_DIRECT`.
 See man qemu(1) for details about different cache types.
@@ -315,8 +318,13 @@ but it must be unique within a container.
 ```
 /dev/disk/by-runq-id/0001 -> ../../vda
 ```
+fstab like mount options can be specified via the RUNQ_MOUNT environment variable.
+E.g.
+```
+RUNQ_MOUNT="id=0001,options=ro+suid+mode=0777;id=0002,options=ro"
+```
 
-### Storage examples
+### External Storage Examples
 Mount the existing Qcow image `/data.qcow2` with xfs filesystem to `/mnt/data`:
 ```
 docker run -v /data.qcow2:/dev/runq/0001/none/xfs/mnt/data ...
@@ -330,6 +338,39 @@ docker run --device /dev/sdb1:/dev/runq/0002/writethrough/ext4/mnt/data2 ...
 Attach the host device `/dev/sdb2` without mounting:
 ```
 docker run --device /dev/sdb2:/dev/runq/0003/writethrough ...
+```
+
+## Embedded disks (experimental)
+In contrast to external disks **embedded disks** are stored inside the container filesystem.
+Configuration is done via the environment variable `RUNQ_DISK`. Disk files are automatically
+created at container start if needed. Existing disk files that are part of the Docker image
+or attached via a Docker volume mount can also be used and will be resized if needed.
+`runq disk` works with all docker images.
+
+Simple example with default mount options:
+```
+docker run --runtime runq -e RUNQ_DISK="dir=/data,size=1G" ...
+```
+All configuration options. Only `dir` is mandatory.
+```
+dir=<mount point>                    # mount point inside the VM
+id=<id>                              # unique identifier, default md5sum(dir)
+size=<size>                          # image size, eg. 128M, 10G
+cache=<cache-type>                   # none|writethrough|writeback
+fstype=<filesystem type>             # ext4 or ext2,
+img=<location of diskimage>          # location of disk image inside filesystem
+label=<label>                        # filesystem label
+options=<mount-options>              # fstype like mount options, separated by `+`
+mount=<on|off>                       # default on
+```
+
+Example with multiple disks:
+```
+docker run --runtime runq -e RUNQ_DISK="dir=/var,size=128M;dir=/data,size=2G" ...
+```
+Example with mount options:
+```
+docker run --runtime runq -e RUNQ_DISK="dir=/data,size=1G,options=ro+suid+mode=0777" ...
 ```
 
 ## Capabilities

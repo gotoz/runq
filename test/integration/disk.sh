@@ -124,3 +124,46 @@ docker run \
 
 checkrc $? 0 "$comment"
 
+
+#
+#
+#
+id1=$(uuid)
+id2=$(uuid)
+comment="mount options"
+cmd="grep '/mnt1 ext4 ro,nosuid' /proc/mounts && stat -c '%a' /mnt2 | grep 1750; exit \$?"
+
+docker run \
+    --runtime runq \
+    --name $(rand_name) \
+    --rm \
+    --device $dev2:/dev/runq/$id1/none/ext4/mnt1 \
+    --volume $dev3:/dev/runq/$id2/writethrough/xfs/mnt2 \
+    -e RUNQ_MOUNT="id=$id1,options=ro+nosuid+mode=1700;id=$id2,options=mode=1750" \
+    --rm \
+    $image \
+    sh -c "$cmd"
+
+checkrc $? 0 "$comment"
+
+#
+#
+#
+comment="external and embedded disk"
+
+id1=$(uuid)
+id2=$(uuid)
+cmd="ls -l /dev/disk/by-runq-id/*; test -L /dev/disk/by-runq-id/$id1 && test -L /dev/disk/by-runq-id/$id2; exit \$?"
+
+docker run \
+    --runtime runq \
+    --name $(rand_name) \
+    --rm \
+    --device /dev/ram1:/dev/runq/$id1/none \
+    -e RUNQ_DISK="dir=/mnt,id=$id2" \
+    $image \
+    sh -c "$cmd"
+
+checkrc $? 0 "$comment"
+
+

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
@@ -18,7 +17,10 @@ type symlink struct {
 	dev, dir, name string
 }
 
-func setupDisks(disks []vm.Disk) error {
+func setupDisks(external, embedded []vm.Disk) error {
+	disks := append([]vm.Disk(nil), external...)
+	disks = append(disks, embedded...)
+
 	var mounts []vm.Mount
 	var links []symlink
 
@@ -46,12 +48,15 @@ func setupDisks(disks []vm.Disk) error {
 			return err
 		}
 
+		flags, data, mode := util.ParseMountOptions(disk.MountOptions)
 		mounts = append(mounts, vm.Mount{
 			ID:     disk.ID,
 			Source: "/dev/" + dev,
 			Target: "/rootfs" + disk.Dir,
 			Fstype: disk.Fstype,
-			Flags:  syscall.MS_NOSUID | syscall.MS_NODEV,
+			Data:   data,
+			Flags:  flags,
+			Mode:   mode,
 		})
 	}
 	if err := mount(mounts); err != nil {

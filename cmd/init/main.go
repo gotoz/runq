@@ -116,7 +116,7 @@ func runInit() error {
 		return err
 	}
 
-	if err := setupDisks(vmdata.Disks); err != nil {
+	if err := setupDisks(vmdata.ExternalDisks, vmdata.EmbeddedDisks); err != nil {
 		return err
 	}
 

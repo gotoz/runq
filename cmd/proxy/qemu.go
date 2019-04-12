@@ -67,16 +67,18 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, error) {
 		"-chardev", "stdio,id=console,signal=off",
 	)
 
-	if len(vmdata.Disks) > 0 {
+	disks := append([]vm.Disk(nil), vmdata.ExternalDisks...)
+	disks = append(disks, vmdata.EmbeddedDisks...)
+	if len(disks) > 0 {
 		args = append(args, "-object", "iothread,id=iothread1")
 	}
 
-	for i, d := range vmdata.Disks {
+	for i, d := range disks {
 		var format string
 		switch d.Type {
-		case vm.Qcow2Image:
+		case vm.DisktypeQcow2Image:
 			format = "qcow2"
-		case vm.BlockDevice, vm.RawFile:
+		case vm.DisktypeBlockDevice, vm.DisktypeRawFile:
 			format = "raw"
 		default:
 			return nil, fmt.Errorf("invalid disk type")

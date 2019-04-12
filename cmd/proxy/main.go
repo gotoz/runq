@@ -85,6 +85,10 @@ func run(vmdataB64 string) (int, error) {
 		return 1, errors.WithStack(err)
 	}
 
+	if err := prepareEmbeddedDisks(vmdata.EmbeddedDisks); err != nil {
+		return 1, err
+	}
+
 	if err = bindMountKernelModules(); err != nil {
 		return 1, err
 	}
@@ -257,7 +261,15 @@ func completeVmdata(vmdata *vm.Data) error {
 		return err
 	}
 
-	if err := updateDisks(vmdata.Disks); err != nil {
+	if err := updateExternalDisksMountOptions(vmdata.ExternalDisks); err != nil {
+		return err
+	}
+
+	vmdata.EmbeddedDisks, err = embeddedDisks()
+	if err != nil {
+		return err
+	}
+	if err := validateDiskIds(vmdata.ExternalDisks, vmdata.EmbeddedDisks); err != nil {
 		return err
 	}
 

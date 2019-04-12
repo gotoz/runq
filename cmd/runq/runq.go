@@ -15,6 +15,7 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/vishvananda/netlink"
@@ -337,9 +338,12 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 	for _, d := range spec.Linux.Devices {
 		if d.Type == "b" {
 			switch {
-			// TODO: remove deprecated syntax "/dev/disk/..."
-			case strings.HasPrefix(d.Path, "/dev/disk/"), strings.HasPrefix(d.Path, "/dev/runq/"):
-				vmdata.Disks = append(vmdata.Disks, vm.Disk{Path: d.Path, Type: vm.BlockDevice})
+			case strings.HasPrefix(d.Path, "/dev/runq/"):
+				vmdata.ExternalDisks = append(vmdata.ExternalDisks, vm.Disk{
+					Path:         d.Path,
+					Type:         vm.DisktypeBlockDevice,
+					MountOptions: []string{"nosuid", "nodev"},
+				})
 			default:
 				return fmt.Errorf("invalid path: %s", d.Path)
 			}
@@ -362,7 +366,7 @@ func specMounts(context *cli.Context, spec *specs.Spec, vmdata *vm.Data) error {
 			if m.Destination == "/dev" {
 				mounts = append(mounts, m)
 			} else {
-				flags, data := parseTmfpsMount(m)
+				flags, data, _ := util.ParseMountOptions(m.Options)
 				vmdata.Mounts = append(vmdata.Mounts, vm.Mount{
 					Source: "tmpfs",
 					Target: m.Destination,
@@ -374,10 +378,12 @@ func specMounts(context *cli.Context, spec *specs.Spec, vmdata *vm.Data) error {
 			}
 			continue
 		}
-
-		// TODO: remove deprecated syntax "/dev/disk/..."
-		if strings.HasPrefix(m.Destination, "/dev/runq/") || strings.HasPrefix(m.Destination, "/dev/disk/") {
-			vmdata.Disks = append(vmdata.Disks, vm.Disk{Path: m.Destination, Type: vm.DisktypeUnknown})
+		if strings.HasPrefix(m.Destination, "/dev/runq/") {
+			vmdata.ExternalDisks = append(vmdata.ExternalDisks, vm.Disk{
+				Path:         m.Destination,
+				Type:         vm.DisktypeUnknown,
+				MountOptions: []string{"nosuid", "nodev"},
+			})
 		}
 		mounts = append(mounts, m)
 	}
@@ -406,49 +412,6 @@ func specMounts(context *cli.Context, spec *specs.Spec, vmdata *vm.Data) error {
 	spec.Mounts = mounts
 
 	return nil
-}
-
-func parseTmfpsMount(m specs.Mount) (int, string) {
-	var dataArray []string
-	var flags int
-	for _, o := range m.Options {
-		switch o {
-		case "default":
-		case "noatime":
-			flags |= syscall.MS_NOATIME
-		case "atime":
-			flags &^= syscall.MS_NOATIME
-		case "nodiratime":
-			flags |= syscall.MS_NODIRATIME
-		case "diratime":
-			flags &^= syscall.MS_NODIRATIME
-		case "nodev":
-			flags |= syscall.MS_NODEV
-		case "dev":
-			flags &^= syscall.MS_NODEV
-		case "noexec":
-			flags |= syscall.MS_NOEXEC
-		case "exec":
-			flags &^= syscall.MS_NOEXEC
-		case "nosuid":
-			flags |= syscall.MS_NOSUID
-		case "suid":
-			flags &^= syscall.MS_NOSUID
-		case "strictatime":
-			flags |= syscall.MS_STRICTATIME
-		case "nostrictatime":
-			flags &^= syscall.MS_STRICTATIME
-		case "ro":
-			flags |= syscall.MS_RDONLY
-		case "rw":
-			flags &^= syscall.MS_RDONLY
-		case "rprivate", "rshared", "rslave", "runbindable":
-		default:
-			dataArray = append(dataArray, o)
-		}
-	}
-	data := strings.Join(dataArray, ",")
-	return flags, data
 }
 
 // macvtapMajor tries to figure out the dynamic device number of the

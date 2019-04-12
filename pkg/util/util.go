@@ -200,3 +200,51 @@ func ErrorToRc(err error) (uint8, string) {
 
 	return rc, fmt.Sprintf("%+v", err)
 }
+
+func ParseMountOptions(opts []string) (int, string, string) {
+	var dataArray []string
+	var flags int
+	var mode string
+	for _, o := range opts {
+		if mo := strings.TrimPrefix(o, "mode="); mo != o {
+			mode = mo
+			continue
+		}
+		switch o {
+		case "defaults":
+		case "noatime":
+			flags |= syscall.MS_NOATIME
+		case "atime":
+			flags &^= syscall.MS_NOATIME
+		case "nodiratime":
+			flags |= syscall.MS_NODIRATIME
+		case "diratime":
+			flags &^= syscall.MS_NODIRATIME
+		case "nodev":
+			flags |= syscall.MS_NODEV
+		case "dev":
+			flags &^= syscall.MS_NODEV
+		case "noexec":
+			flags |= syscall.MS_NOEXEC
+		case "exec":
+			flags &^= syscall.MS_NOEXEC
+		case "nosuid":
+			flags |= syscall.MS_NOSUID
+		case "suid":
+			flags &^= syscall.MS_NOSUID
+		case "strictatime":
+			flags |= syscall.MS_STRICTATIME
+		case "nostrictatime":
+			flags &^= syscall.MS_STRICTATIME
+		case "ro":
+			flags |= syscall.MS_RDONLY
+		case "rw":
+			flags &^= syscall.MS_RDONLY
+		case "rprivate", "rshared", "rslave", "runbindable":
+		default:
+			dataArray = append(dataArray, o)
+		}
+	}
+	data := strings.Join(dataArray, ",")
+	return flags, data, mode
+}

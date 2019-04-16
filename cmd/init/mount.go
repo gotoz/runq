@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gotoz/runq/pkg/util"
@@ -188,6 +189,24 @@ func mount(mounts []vm.Mount) error {
 		if err := unix.Mount(m.Source, m.Target, m.Fstype, uintptr(m.Flags), m.Data); err != nil {
 			return fmt.Errorf("Mount failed: src:%s dst:%s fs:%s id:%s reason: %v", m.Source, m.Target, m.Fstype, m.ID, err)
 		}
+	}
+	return nil
+}
+
+func bindMountFile(src, target string) error {
+	dir := filepath.Dir(target)
+	if !util.DirExists(dir) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return errors.Errorf("os.MkdirAll failed: %v", err)
+		}
+	}
+	if !util.FileExists(target) {
+		if _, err := os.Create(target); err != nil {
+			return errors.Errorf("os.Create failed: %v", err)
+		}
+	}
+	if err := unix.Mount(src, target, "", unix.MS_BIND|unix.MS_RDONLY, ""); err != nil {
+		return fmt.Errorf("Mount failed: src:%s dst:%s reason: %v", src, target, err)
 	}
 	return nil
 }

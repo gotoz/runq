@@ -286,6 +286,17 @@ func completeVmdata(vmdata *vm.Data) error {
 		copy(vmdata.Vsockd.EntrypointEnv, vmdata.Entrypoint.Env)
 	}
 
+	arg0 := vmdata.Entrypoint.Args[0]
+	if arg0 == "/dev/init" {
+		if _, err := os.Stat(arg0); err == nil {
+			vmdata.Entrypoint.DockerInit = arg0
+		}
+	} else if arg0 == "/sbin/docker-init" { // since docker 19.03
+		if _, err := os.Stat(arg0); err == nil {
+			vmdata.Entrypoint.DockerInit = arg0
+		}
+	}
+
 	os.Clearenv()
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -205,6 +206,24 @@ func mount(mounts []vm.Mount) error {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func bindMountFile(src, target string) error {
+	dir := filepath.Dir(target)
+	if !util.DirExists(dir) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return errors.Errorf("os.MkdirAll failed: %v", err)
+		}
+	}
+	if !util.FileExists(target) {
+		if _, err := os.Create(target); err != nil {
+			return errors.Errorf("os.Create failed: %v", err)
+		}
+	}
+	if err := unix.Mount(src, target, "", unix.MS_BIND|unix.MS_RDONLY, ""); err != nil {
+		return fmt.Errorf("Mount failed: src:%s dst:%s reason: %v", src, target, err)
 	}
 	return nil
 }

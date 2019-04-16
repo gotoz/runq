@@ -24,14 +24,6 @@ func mainEntrypoint() {
 func runEntrypoint() error {
 	runtime.LockOSThread()
 
-	if err := mountRootfs(); err != nil {
-		return err
-	}
-
-	if err := chroot("/rootfs"); err != nil {
-		return err
-	}
-
 	rd := os.NewFile(uintptr(3), "rd")
 	if rd == nil {
 		return errors.New("rd == nil")
@@ -47,6 +39,19 @@ func runEntrypoint() error {
 	entrypoint, err := vm.DecodeEntrypointGob(buf)
 	if err != nil {
 		return errors.WithStack(err)
+	}
+
+	if err := mountRootfs(); err != nil {
+		return err
+	}
+	if entrypoint.DockerInit != "" {
+		if err := bindMountFile("/sbin/docker-init", "/rootfs"+entrypoint.DockerInit); err != nil {
+			return err
+		}
+	}
+
+	if err := chroot("/rootfs"); err != nil {
+		return err
 	}
 
 	if err := mountCgroups(); err != nil {
@@ -112,6 +117,7 @@ func runEntrypoint() error {
 	if !entrypoint.Terminal {
 		os.Stdin = nil
 	}
+
 	if err := unix.Exec(path, os.Args[1:], entrypoint.Env); err != nil {
 		return errors.Wrap(err, "Exec() failed")
 	}

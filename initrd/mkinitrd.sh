@@ -19,6 +19,7 @@ popd >/dev/null
 cp $DIR/../cmd/init/init $TMP_DIR/
 cp $DIR/../cmd/vsockd/vsockd $TMP_DIR/sbin/
 cp $DIR/../cmd/nsenter/nsenter $TMP_DIR/sbin/
+cp /usr/bin/docker-init $TMP_DIR/sbin/
 
 pushd $TMP_DIR >/dev/null
 find . | cpio -o -H newc | gzip > $DIR/initrd

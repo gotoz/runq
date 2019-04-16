@@ -112,6 +112,7 @@ type Entrypoint struct {
 	Args            []string
 	Capabilities    AppCapabilities
 	Cwd             string
+	DockerInit      string
 	Env             []string
 	NoNewPrivileges bool
 	Rlimits         map[string]Rlimit

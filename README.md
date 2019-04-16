@@ -450,10 +450,11 @@ The following common options of `docker run` are supported:
 --group-add                 --tmpfs
 --help                      --tty
 --hostname                  --ulimit
---interactive               --user
---ip                        --volume
---link                      --volumes-from
---mount                     --workdir
+--init                      --user
+--interactive               --volume
+--ip                        --volumes-from
+--link                      --workdir
+--mount
 ```
 
 ### Nested VM

@@ -52,7 +52,7 @@ func main() {
 
 func runInit() error {
 	runtime.LockOSThread()
-	if err := mountInit(); err != nil {
+	if err := mountInitStage0(); err != nil {
 		return err
 	}
 
@@ -95,12 +95,42 @@ func runInit() error {
 		}
 	}
 
-	if err := mount9pfs(vmdata.Mounts); err != nil {
+	// By default the 9pfs share contains the container root filesystem
+	// including /lib/modules. It's mounted to /rootfs. /rootfs/lib/modules
+	// must then be bind-mounted back to /lib/modules to make modprobe work.
+	//
+	// When using a rootdisk the 9pfs share contains only /lib/modules
+	// which must be bind-mounted into the rootdisk.
+	if vmdata.Rootdisk == "" {
+		if err := mountInitShare("rootfs", "/rootfs"); err != nil {
+			return err
+		}
+		if err := mountInitModulesDir(false); err != nil {
+			return err
+		}
+	} else {
+		if err := mountInitShare("share", "/lib/modules"); err != nil {
+			return err
+		}
+		if err := setupRootdisk(vmdata); err != nil {
+			return err
+		}
+		if err := mountInitModulesDir(true); err != nil {
+			return err
+		}
+	}
+
+	// Remove empty mountpoint.
+	if err := os.Remove("/rootfs/qemu"); err != nil && !os.IsNotExist(err) {
+		return errors.WithStack(err)
+	}
+
+	if err := mountInitStage1(vmdata.Mounts); err != nil {
 		return err
 	}
 
 	if !vmdata.NoExec {
-		if err := loadKernelModules("vsock", "/rootfs"); err != nil {
+		if err := loadKernelModules("vsock", ""); err != nil {
 			return err
 		}
 	}
@@ -350,7 +380,7 @@ func shutdown(rc uint8, msg string) {
 			util.SetSysctl("kernel.printk", "0")
 			util.Killall()
 			unix.Sync()
-			umountRootfs()
+			umountInit()
 			ch <- 1
 		}()
 		select {

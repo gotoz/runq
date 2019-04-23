@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
+	"golang.org/x/sys/unix"
 
 	"github.com/pkg/errors"
 )
@@ -40,11 +40,47 @@ func setupDisks(disks []vm.Disk) error {
 			Source: "/dev/" + dev,
 			Target: "/rootfs" + disk.Dir,
 			Fstype: disk.Fstype,
-			Flags:  syscall.MS_NOSUID | syscall.MS_NODEV,
+			Flags:  unix.MS_NOSUID | unix.MS_NODEV,
 		}
 		if err := mount(mnt); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func setupRootdisk(vmdata *vm.Data) error {
+	var disk vm.Disk
+	for i, d := range vmdata.Disks {
+		if d.ID == vmdata.Rootdisk {
+			disk = d
+			// remove rootdisk from disks
+			vmdata.Disks = append(vmdata.Disks[:i], vmdata.Disks[i+1:]...)
+			break
+		}
+	}
+
+	dev, err := findDisk(disk.Serial)
+	if err != nil {
+		return err
+	}
+	if dev == "" {
+		return errors.New("rootdisk not found")
+	}
+
+	if err := createDiskSymlink(dev, disk.ID); err != nil {
+		return err
+	}
+
+	mnt := vm.Mount{
+		ID:     disk.ID,
+		Source: "/dev/" + dev,
+		Target: "/rootfs",
+		Fstype: disk.Fstype,
+		Flags:  0,
+	}
+	if err := mount(mnt); err != nil {
+		return err
 	}
 	return nil
 }

@@ -13,12 +13,14 @@ RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
         busybox-static \
         ca-certificates \
         cpio \
+        e2fsprogs \
         git \
         golang \
         libseccomp-dev \
         linux-virtual \
         pkg-config \
         qemu-kvm \
+        rsync \
         xz-utils
 
 RUN go get -d github.com/opencontainers/runc
@@ -28,6 +30,7 @@ RUN mkdir -p \
     $QEMU_ROOT/proc \
     $QEMU_ROOT/lib \
     $QEMU_ROOT/rootfs \
+    $QEMU_ROOT/share \
     $QEMU_ROOT/sys
 
 RUN rm -f /lib/modules/*/build \
@@ -57,9 +60,17 @@ RUN cp -d --preserve=all --parents \
 
 RUN cp -a --parents \
     /bin/busybox \
+    /etc/mtab \
     /lib64 \
     /lib/modules \
+    /sbin/e2fsck \
+    /sbin/fsck.ext2 \
+    /sbin/fsck.ext4 \
+    /sbin/mke2fs \
+    /sbin/mkfs.ext2 \
+    /sbin/mkfs.ext4 \
     /usr/bin/qemu-system-x86_64 \
+    /usr/bin/rsync \
     /usr/lib/ipxe \
     /usr/lib/x86_64-linux-gnu/pulseaudio \
     /usr/lib/x86_64-linux-gnu/qemu  \

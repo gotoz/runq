@@ -86,7 +86,32 @@ func run(vmdataB64 string) (int, error) {
 		return 1, errors.WithStack(err)
 	}
 
-	if err = bindMountKernelModules(); err != nil {
+	// At this point the container files are in /rootfs.
+	// - without rootdisk (default):
+	//   /lib/modules will be bind-mounted to /rootfs/lib/modules.
+	//   /rootfs will be shared via 9p to the VM.
+	// - with rootdisk:
+	//   The content of /rootfs will be copied into a block device.
+	//   /lib/modules will be bind-mounted to /share
+	//   /share will be shared via 9p to the VM.
+	var share, modulesMountDir string
+	if vmdata.Rootdisk == "" {
+		// w/o rootdisk
+		share = "/rootfs"
+		modulesMountDir = "/rootfs/lib/modules"
+	} else {
+		// with rootdisk
+		if err := prepareRootdisk(vmdata); err != nil {
+			return 1, err
+		}
+		if err := unix.Unmount("/rootfs", unix.MNT_DETACH); err != nil {
+			return 1, err
+		}
+		share = "/share"
+		modulesMountDir = "/share"
+	}
+
+	if err = bindMountKernelModules(modulesMountDir); err != nil {
 		return 1, err
 	}
 
@@ -98,7 +123,7 @@ func run(vmdataB64 string) (int, error) {
 		return 1, err
 	}
 
-	args, err := qemuConfig(vmdata, vmsocket)
+	args, err := qemuConfig(vmdata, vmsocket, share)
 	if err != nil {
 		return 1, err
 	}
@@ -254,6 +279,21 @@ func completeVmdata(vmdata *vm.Data) error {
 		return err
 	}
 
+	val, ok = os.LookupEnv("RUNQ_ROOTDISK")
+	if ok {
+		vmdata.Rootdisk = val
+	}
+	val, ok = os.LookupEnv("RUNQ_ROOTDISK_EXCLUDE")
+	if ok {
+		for _, v := range strings.Split(val, ",") {
+			v = strings.TrimSpace(v)
+			if v == "" {
+				continue
+			}
+			vmdata.RootdiskExclude = append(vmdata.RootdiskExclude, v)
+		}
+	}
+
 	vmdata.Networks, err = setupNetwork()
 	if err != nil {
 		return err
@@ -307,9 +347,8 @@ func completeVmdata(vmdata *vm.Data) error {
 	return nil
 }
 
-func bindMountKernelModules() error {
+func bindMountKernelModules(dest string) error {
 	var src = "/lib/modules"
-	var dest = "/rootfs/lib/modules"
 	if !util.DirExists(src) {
 		return nil
 	}

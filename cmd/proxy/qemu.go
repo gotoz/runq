@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"runtime"
 	"strconv"
 
 	"github.com/gotoz/runq/pkg/vm"
 )
 
-func qemuConfig(vmdata *vm.Data, socket string) ([]string, error) {
+func qemuConfig(vmdata *vm.Data, socket, share string) ([]string, error) {
+	shareName := filepath.Base(share)
 	var cpuArgs, virtioArgs string
 	if vmdata.NestedVM {
 		cpuArgs = ",pmu=off"
@@ -22,7 +24,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, error) {
 		args = []string{
 			"/usr/bin/qemu-system-x86_64",
 			"-device", "virtio-rng-pci,max-bytes=1024,period=1000" + virtioArgs,
-			"-device", "virtio-9p-pci,fsdev=rootfs_dev,mount_tag=rootfs" + virtioArgs,
+			"-device", "virtio-9p-pci,fsdev=share,mount_tag=" + shareName + virtioArgs,
 			"-device", "virtio-serial-pci" + virtioArgs,
 			"-serial", "chardev:console",
 			"-no-acpi",
@@ -32,7 +34,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, error) {
 		args = []string{
 			"/usr/bin/qemu-system-s390x",
 			"-device", "virtio-rng-ccw,max-bytes=1024,period=1000",
-			"-device", "virtio-9p-ccw,fsdev=rootfs_dev,mount_tag=rootfs",
+			"-device", "virtio-9p-ccw,fsdev=share,mount_tag=" + shareName,
 			"-device", "virtio-serial-ccw",
 			"-device", "sclpconsole,chardev=console",
 		}
@@ -58,7 +60,7 @@ func qemuConfig(vmdata *vm.Data, socket string) ([]string, error) {
 		"-kernel", "/kernel",
 		"-initrd", "/initrd",
 		"-msg", "timestamp=on",
-		"-fsdev", "local,id=rootfs_dev,path=/rootfs,security_model=none",
+		"-fsdev", "local,id=share,path="+share+",security_model=none",
 		"-chardev", "socket,path="+socket+",id=channel1",
 		"-device", "virtserialport,chardev=channel1,name=com.ibm.runq.channel.1",
 		"-smp", strconv.Itoa(vmdata.CPU),

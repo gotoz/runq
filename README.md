@@ -180,17 +180,17 @@ environment variable `RUNQ_RUNQENV`.
     `veth <------> veth                 +--------------------------+   |
               |        `<--- macvtap ---|-> eth0                   |   |
               |  proxy  <-----------------> init                   |   |
-  runq-exec <-----------tls----------------> `vsockd               |   |
-              |                         |---------------namespace--|   |
- overlayfs <-----9pfs-------------------|-> /                      |   |
-              |                         |                          |   |
- block dev <-----virtio-blk-------------|-> /dev/vdx               |   |
-              |                         |                          |   |
-              |                         |                          |   |
-              |                         |                          |   |
-              |                         |       application        |   |
-              |                         |                          |   |
-              |                         +--------------------------+   |
+ runq-exec <-----------tls----------------> `vsockd                |   |
+              |                         |+-------------namespace--+|   |
+ overlayfs <-----9pfs-------------------||-> /                    ||   |
+              |                         ||                        ||   |
+ block dev <-----virtio-blk-------------||-> /dev/vdx             ||   |
+              |                         ||                        ||   |
+              |                         ||                        ||   |
+              |                         ||                        ||   |
+              |                         ||       application      ||   |
+              |                         ||                        ||   |
+              |                         |+------------------------+|   |
               |                         |       guest kernel       |   |
               |                         +--------------------------+   |
               |                                     qemu               |
@@ -338,6 +338,18 @@ Attach the host device `/dev/sdb2` without mounting:
 ```
 docker run --device /dev/sdb2:/dev/runq/0003/writethrough ...
 ```
+
+### Rootdisk (experimental)
+A block device with an empty ext2 or ext4 filesytem can be marked as rootdisk of the VM.
+At first boot of the container the whole Docker image will be coppied into the rootdisk.
+The rootdisk will then be used as rootfs instead of 9pfs.
+```
+docker run --device /dev/sdb1:/dev/runq/0001/none/ext4 -e RUNQ_ROOTDISK=0001 ...
+```
+Directories can be excluded from beeing coppied with the RUNQ_ROOTDISK_EXCLUDE environment
+variable. E.g. `-e RUNQ_ROOTDISK_EXCLUDE="/foo,/bar"
+
+See [Dockerfile.rootdisk](test/examples/Dockerfile.rootdisk) and [rootdisk.sh](test/examples/rootdisk.sh) as an example.
 
 ## Capabilities
 By default runq drops all capabilities except those needed (same as regular Docker does).

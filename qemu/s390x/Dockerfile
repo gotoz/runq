@@ -13,12 +13,14 @@ RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
         busybox-static \
         ca-certificates \
         cpio \
+        e2fsprogs \
         git \
         golang \
         libseccomp-dev \
         linux-virtual \
         pkg-config \
         qemu-kvm \
+        rsync \
         xz-utils
 
 RUN go get -d github.com/opencontainers/runc
@@ -28,9 +30,10 @@ RUN mkdir -p \
     $QEMU_ROOT/proc \
     $QEMU_ROOT/lib \
     $QEMU_ROOT/rootfs \
+    $QEMU_ROOT/share \
     $QEMU_ROOT/sys
 
-RUN rm -f /lib/modules/*/build  \
+RUN rm -f /lib/modules/*/build \
     && echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                               >  $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/net/9p/9pnet.ko                                     >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/net/9p/9pnet_virtio.ko                              >> $QEMU_ROOT/kernel.conf \
@@ -62,9 +65,17 @@ RUN cp -d --preserve=all --parents \
 
 RUN cp -a --parents \
     /bin/busybox \
+    /etc/mtab \
     /lib/ld64.so.1 \
     /lib/modules \
+    /sbin/e2fsck \
+    /sbin/fsck.ext2 \
+    /sbin/fsck.ext4 \
+    /sbin/mke2fs \
+    /sbin/mkfs.ext2 \
+    /sbin/mkfs.ext4 \
     /usr/bin/qemu-system-s390x \
+    /usr/bin/rsync \
     /usr/lib/s390x-linux-gnu/pulseaudio \
     /usr/lib/s390x-linux-gnu/qemu \
     /usr/share/qemu \

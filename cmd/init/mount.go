@@ -16,7 +16,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func mountInit() error {
+func mountInitStage0() error {
 	mounts := []vm.Mount{
 		{
 			Source: "proc",
@@ -48,30 +48,57 @@ func mountInit() error {
 	return mount(mounts...)
 }
 
-func mount9pfs(extraMounts []vm.Mount) error {
-	mounts := []vm.Mount{
-		{
-			Source: "rootfs",
-			Target: "/rootfs",
-			Fstype: "9p",
-			Flags:  unix.MS_NODEV | unix.MS_DIRSYNC,
-			Data:   "trans=virtio,cache=mmap",
-		},
-		{
-			Source: "/rootfs/lib/modules",
-			Target: "/lib/modules",
-			Fstype: "",
-			Flags:  unix.MS_BIND,
-		},
+func mountInitShare(source, target string) error {
+	mnt := vm.Mount{
+		Source: source,
+		Target: target,
+		Fstype: "9p",
+		Flags:  unix.MS_NODEV | unix.MS_DIRSYNC,
+		Data:   "trans=virtio,cache=mmap",
 	}
-	for _, m := range extraMounts {
-		m.Target = "/rootfs" + m.Target
-		mounts = append(mounts, m)
+	return mount(mnt)
+}
+
+func mountInitStage1(extraMounts []vm.Mount) error {
+	for i := range extraMounts {
+		extraMounts[i].Target = "/rootfs" + extraMounts[i].Target
+	}
+	return mount(extraMounts...)
+}
+
+func mountInitModulesDir(rootdisk bool) error {
+	var mounts []vm.Mount
+	if rootdisk {
+		mounts = []vm.Mount{
+			vm.Mount{
+				Source: "/lib/modules",
+				Target: "/rootfs/lib/modules",
+				Flags:  unix.MS_BIND | unix.MS_RDONLY,
+			},
+		}
+	} else {
+		mounts = []vm.Mount{
+			{
+				Source: "/rootfs/lib/modules",
+				Target: "/lib/modules",
+				Flags:  unix.MS_BIND,
+			},
+			{
+				Source: "/rootfs/lib/modules",
+				Target: "/rootfs/lib/modules",
+				Flags:  unix.MS_BIND,
+			},
+			{
+				Source: "/rootfs/lib/modules",
+				Target: "/rootfs/lib/modules",
+				Flags:  unix.MS_REMOUNT | unix.MS_BIND | unix.MS_RDONLY | unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
+			},
+		}
 	}
 	return mount(mounts...)
 }
 
-func mountRootfs() error {
+func mountEntrypointStage0() error {
 	mounts := []vm.Mount{
 		{
 			Source: "proc",
@@ -112,24 +139,11 @@ func mountRootfs() error {
 			Fstype: "mqueue",
 			Flags:  unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
 		},
-		{
-			Source: "/rootfs/lib/modules",
-			Target: "/rootfs/lib/modules",
-			Fstype: "",
-			Flags:  unix.MS_BIND,
-		},
-		{
-			Source: "/rootfs/lib/modules",
-			Target: "/rootfs/lib/modules",
-			Fstype: "",
-			Flags:  unix.MS_REMOUNT | unix.MS_BIND | unix.MS_RDONLY | unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
-		},
 	}
-
 	return mount(mounts...)
 }
 
-func mountCgroups() error {
+func mountEntrypointCgroups() error {
 	if !util.FileExists("/proc/cgroups") {
 		return nil
 	}
@@ -253,7 +267,7 @@ func maskPath(paths []string) error {
 
 // Unmount real filesystems in revers order of /proc/mounts.
 // Ignore almost all errors but retry to catch nested mounts.
-func umountRootfs() {
+func umountInit() {
 	for i := 0; i < 10; i++ {
 		fd, err := os.Open("/proc/mounts")
 		if err != nil {

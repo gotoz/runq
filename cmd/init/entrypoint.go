@@ -42,9 +42,10 @@ func runEntrypoint() error {
 		return errors.WithStack(err)
 	}
 
-	if err := mountRootfs(); err != nil {
+	if err := mountEntrypointStage0(); err != nil {
 		return err
 	}
+
 	if entrypoint.DockerInit != "" {
 		if err := bindMountFile("/sbin/docker-init", "/rootfs"+entrypoint.DockerInit); err != nil {
 			return err
@@ -61,13 +62,8 @@ func runEntrypoint() error {
 		}
 	}
 
-	if err := mountCgroups(); err != nil {
+	if err := mountEntrypointCgroups(); err != nil {
 		return err
-	}
-
-	// Remove empty mountpoint.
-	if err := os.Remove("/qemu"); err != nil && !os.IsNotExist(err) {
-		return errors.WithStack(err)
 	}
 
 	if err := maskPath(vm.MaskedPaths); err != nil {

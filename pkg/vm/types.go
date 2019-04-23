@@ -135,21 +135,23 @@ type DNS struct {
 
 // Data contains all data needed by the VM.
 type Data struct {
-	APDevice    string
-	ContainerID string
-	CPU         int
-	Disks       []Disk
-	DNS         DNS
-	GitCommit   string
-	Hostname    string
-	Mem         int
-	Mounts      []Mount
-	NestedVM    bool
-	Networks    []Network
-	NoExec      bool
-	Sysctl      map[string]string
-	Entrypoint  Entrypoint
-	Vsockd      Vsockd
+	APDevice        string
+	ContainerID     string
+	CPU             int
+	Disks           []Disk
+	DNS             DNS
+	GitCommit       string
+	Hostname        string
+	Mem             int
+	Mounts          []Mount
+	NestedVM        bool
+	Networks        []Network
+	NoExec          bool
+	Rootdisk        string
+	RootdiskExclude []string
+	Sysctl          map[string]string
+	Entrypoint      Entrypoint
+	Vsockd          Vsockd
 }
 
 // Encode encodes a data struct into binary Gob.

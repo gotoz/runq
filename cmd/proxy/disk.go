@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
 	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
+	"golang.org/x/sys/unix"
 
 	"github.com/pkg/errors"
 )
@@ -104,10 +107,124 @@ func updateDisks(disks []vm.Disk) error {
 			}
 			d.Type = dt
 		}
+		if d.Type == vm.DisktypeUnknown {
+			return fmt.Errorf("%s: unknown disktype", d.Path)
+		}
 
 		d.Serial = util.RandStr(12)
 
 		disks[i] = d
 	}
 	return nil
+}
+
+// prepareRootdisk copies the content of the container root directory into a
+// bootdisk. The disk must have an empty ext2 or ext4 filesystem.
+// prepareRootdisk must run after pivot_root to /qemu so that the container
+// files are in /qemu/rootfs.
+func prepareRootdisk(vmdata *vm.Data) error {
+	var disk *vm.Disk
+	for _, d := range vmdata.Disks {
+		if d.ID == vmdata.Rootdisk {
+			disk = &d
+			break
+		}
+	}
+	if disk == nil {
+		return fmt.Errorf("rootdisk %q not found", vmdata.Rootdisk)
+	}
+
+	dtype, err := disktype(disk.Path)
+	if err != nil {
+		return err
+	}
+	if dtype == vm.DisktypeUnknown {
+		return fmt.Errorf("rootdisk %s: unknown disktype", disk.Path)
+	}
+
+	excl := []string{"/dev", "/lib/modules", "/lost+found", "/proc", "/qemu", "/sys"}
+	excl = append(excl, vmdata.RootdiskExclude...)
+
+	if disk.Fstype != "ext2" && disk.Fstype != "ext4" {
+		return fmt.Errorf("rootdisk: fstype %q is not supported, use ext2 or ext4", disk.Fstype)
+	}
+
+	cmd := exec.Command("/sbin/e2fsck", "-pv", disk.Path)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		rc, _ := util.ErrorToRc(err)
+		if rc > 0 {
+			log.Println(string(out))
+		}
+		if rc > 1 {
+			return fmt.Errorf("e2fsck failed: %v", err)
+		}
+	}
+
+	src := "/rootfs"
+	dest := "/dev/rootdisk"
+	if err := os.Mkdir(dest, 0700); err != nil {
+		return err
+	}
+	if err := unix.Mount(disk.Path, dest, disk.Fstype, 0, ""); err != nil {
+		return fmt.Errorf("mount rootdisk failed: %v", err)
+	}
+	defer func() {
+		if err := unix.Unmount(dest, unix.MNT_DETACH); err != nil {
+			log.Printf("umount rootdisk failed: %v", err)
+		}
+		os.Remove(dest)
+	}()
+
+	diskIsEmpty, err := dirIsEmpty(dest)
+	if err != nil {
+		return err
+	}
+	if !diskIsEmpty {
+		return nil
+	}
+
+	args := []string{"/usr/bin/rsync", "-aRH"}
+	for _, d := range excl {
+		args = append(args, "--exclude", d)
+	}
+	args = append(args, "./", dest)
+
+	if err := os.Chdir(src); err != nil {
+		return fmt.Errorf("chdir to %s failed: %v ", src, err)
+	}
+	defer os.Chdir("/")
+
+	cmd = exec.Command(args[0], args[1:]...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		rc, msg := util.ErrorToRc(err)
+		if rc > 0 {
+			log.Println(string(out))
+			return fmt.Errorf("rsync failed: %v rc=%d %s", err, rc, msg)
+		}
+	}
+	if err := os.MkdirAll("/lib/modules", 0755); err != nil {
+		return err
+	}
+	return nil
+}
+
+func dirIsEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	dirs, err := f.Readdirnames(2)
+	if err != nil {
+		if err == io.EOF {
+			return true, nil
+		}
+		return false, err
+	}
+	for _, d := range dirs {
+		if d != "lost+found" {
+			return false, nil
+		}
+	}
+	return true, nil
 }

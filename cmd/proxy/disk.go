@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -53,14 +52,6 @@ var reDiskID = regexp.MustCompile("^[a-zA-Z0-9-_]{1,36}$")
 func updateDisks(disks []vm.Disk) error {
 	ids := make(map[string]bool)
 	for i, d := range disks {
-		if strings.HasPrefix(d.Path, "/dev/disk/") {
-			if err := updateDiskOldSyntax(&d); err != nil {
-				return err
-			}
-			log.Printf("Warning: deprecated syntax: '<source>:%s': want: \"<source>:/dev/runq/<id>/<cache>[/<filesystem>/<mountpoint>]\"", d.Path)
-			disks[i] = d
-			continue
-		}
 		//  0   1    2     3       4             5
 		// /dev/runq/<id>/<cache>[/<filesystem>/<mountpoint>]
 		f := strings.SplitN(strings.TrimLeft(d.Path, "/ "), "/", 6)
@@ -113,45 +104,5 @@ func updateDisks(disks []vm.Disk) error {
 
 		disks[i] = d
 	}
-	return nil
-}
-
-func updateDiskOldSyntax(d *vm.Disk) error {
-	//  0   1     2       3           4
-	// /dev/disk/<cache>/<filesystem>/<mountpoint>
-	f := strings.SplitN(strings.Trim(d.Path, "/ "), "/", 5)
-	if len(f) < 5 {
-		return fmt.Errorf("invalid disk: %s", d.Path)
-	}
-
-	switch f[2] {
-	case "none", "writeback", "writethrough", "unsafe":
-		d.Cache = f[2]
-	default:
-		return fmt.Errorf("invalid cache type for %s", d.Path)
-	}
-
-	switch f[3] {
-	case "ext2", "ext3", "ext4", "xfs", "btrfs":
-		d.Fstype = f[3]
-		d.Dir = f[4]
-		d.Mount = true
-	case "none":
-		d.Fstype = ""
-	default:
-		return fmt.Errorf("unsupported filesystem '%s' in %s", f[3], d.Path)
-	}
-
-	d.Dir = "/" + f[4]
-
-	if d.Type == vm.DisktypeUnknown {
-		dt, err := disktype(d.Path)
-		if err != nil {
-			return fmt.Errorf("can't get disktype of %q: %v", d.Path, err)
-		}
-		d.Type = dt
-	}
-	d.Serial = util.RandStr(12)
-	d.ID = util.RandStr(8)
 	return nil
 }

@@ -336,11 +336,9 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 	// /dev/runq/...
 	for _, d := range spec.Linux.Devices {
 		if d.Type == "b" {
-			switch {
-			// TODO: remove deprecated syntax "/dev/disk/..."
-			case strings.HasPrefix(d.Path, "/dev/disk/"), strings.HasPrefix(d.Path, "/dev/runq/"):
+			if strings.HasPrefix(d.Path, "/dev/runq/") {
 				vmdata.Disks = append(vmdata.Disks, vm.Disk{Path: d.Path, Type: vm.BlockDevice})
-			default:
+			} else {
 				return fmt.Errorf("invalid path: %s", d.Path)
 			}
 		}
@@ -375,8 +373,7 @@ func specMounts(context *cli.Context, spec *specs.Spec, vmdata *vm.Data) error {
 			continue
 		}
 
-		// TODO: remove deprecated syntax "/dev/disk/..."
-		if strings.HasPrefix(m.Destination, "/dev/runq/") || strings.HasPrefix(m.Destination, "/dev/disk/") {
+		if strings.HasPrefix(m.Destination, "/dev/runq/") {
 			vmdata.Disks = append(vmdata.Disks, vm.Disk{Path: m.Destination, Type: vm.DisktypeUnknown})
 		}
 		mounts = append(mounts, m)

@@ -23,10 +23,8 @@ func setupDisks(disks []vm.Disk) error {
 		if dev == "" {
 			return errors.New("disk not found: " + disk.Dir)
 		}
-		if disk.ID != "" {
-			if err := createDiskSymlink(dev, disk.ID); err != nil {
-				return err
-			}
+		if err := createDiskSymlink(dev, disk.ID); err != nil {
+			return err
 		}
 
 		if !disk.Mount {

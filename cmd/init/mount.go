@@ -45,7 +45,7 @@ func mountInit() error {
 			Data:   "newinstance,gid=5,mode=0620,ptmxmode=000",
 		},
 	}
-	return mount(mounts)
+	return mount(mounts...)
 }
 
 func mount9pfs(extraMounts []vm.Mount) error {
@@ -68,7 +68,7 @@ func mount9pfs(extraMounts []vm.Mount) error {
 		m.Target = "/rootfs" + m.Target
 		mounts = append(mounts, m)
 	}
-	return mount(mounts)
+	return mount(mounts...)
 }
 
 func mountRootfs() error {
@@ -126,7 +126,7 @@ func mountRootfs() error {
 		},
 	}
 
-	return mount(mounts)
+	return mount(mounts...)
 }
 
 func mountCgroups() error {
@@ -173,10 +173,10 @@ func mountCgroups() error {
 	if err := sc.Err(); err != nil {
 		return errors.WithStack(err)
 	}
-	return mount(mounts)
+	return mount(mounts...)
 }
 
-func mount(mounts []vm.Mount) error {
+func mount(mounts ...vm.Mount) error {
 	for _, m := range mounts {
 		if util.FileExists(m.Target) {
 			return errors.Errorf("invalid path: %v", m.Target)

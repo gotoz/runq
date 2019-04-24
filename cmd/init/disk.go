@@ -15,8 +15,6 @@ import (
 )
 
 func setupDisks(disks []vm.Disk) error {
-	var mounts []vm.Mount
-
 	for _, disk := range disks {
 		dev, err := findDisk(disk.Serial)
 		if err != nil {
@@ -39,16 +37,16 @@ func setupDisks(disks []vm.Disk) error {
 			return err
 		}
 
-		mounts = append(mounts, vm.Mount{
+		mnt := vm.Mount{
 			ID:     disk.ID,
 			Source: "/dev/" + dev,
 			Target: "/rootfs" + disk.Dir,
 			Fstype: disk.Fstype,
 			Flags:  syscall.MS_NOSUID | syscall.MS_NODEV,
-		})
-	}
-	if err := mount(mounts); err != nil {
-		return err
+		}
+		if err := mount(mnt); err != nil {
+			return err
+		}
 	}
 	return nil
 }

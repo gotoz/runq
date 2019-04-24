@@ -14,13 +14,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-type symlink struct {
-	dev, dir, name string
-}
-
 func setupDisks(disks []vm.Disk) error {
 	var mounts []vm.Mount
-	var links []symlink
 
 	for _, disk := range disks {
 		dev, err := findDisk(disk.Serial)
@@ -31,11 +26,9 @@ func setupDisks(disks []vm.Disk) error {
 			return errors.New("disk not found: " + disk.Dir)
 		}
 		if disk.ID != "" {
-			links = append(links, symlink{
-				dev:  dev,
-				dir:  "/dev/disk/by-runq-id",
-				name: disk.ID,
-			})
+			if err := createDiskSymlink(dev, disk.ID); err != nil {
+				return err
+			}
 		}
 
 		if !disk.Mount {
@@ -57,7 +50,7 @@ func setupDisks(disks []vm.Disk) error {
 	if err := mount(mounts); err != nil {
 		return err
 	}
-	return createSymlinks(links)
+	return nil
 }
 
 // findDisk searches for a block device in sysfs for a given serial number.
@@ -88,25 +81,24 @@ func findDisk(serial string) (string, error) {
 	return "", nil
 }
 
-func createSymlinks(links []symlink) error {
+func createDiskSymlink(dev, name string) error {
 	wd, err := os.Getwd()
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	defer os.Chdir(wd)
 
-	for _, l := range links {
-		if !util.DirExists(l.dir) {
-			if err := os.MkdirAll(l.dir, 0755); err != nil {
-				return err
-			}
+	const dir = "/dev/disk/by-runq-id"
+	if !util.DirExists(dir) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
 		}
-		if err := os.Chdir(l.dir); err != nil {
-			return errors.WithStack(err)
-		}
-		if err := os.Symlink("../../"+l.dev, l.name); err != nil {
-			return fmt.Errorf("can't create symlink: %v", err)
-		}
+	}
+	if err := os.Chdir(dir); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := os.Symlink("../../"+dev, name); err != nil {
+		return fmt.Errorf("can't create symlink: %v", err)
 	}
 	return nil
 }

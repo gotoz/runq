@@ -7,7 +7,7 @@ image:
 	docker build -t runq-build .
 
 qemu.tar:
-	docker run --rm runq-build tar -C /var/lib/runq/qemu -cf - .  > qemu.tar
+	docker run --rm runq-build tar -C $(QEMU_ROOT) -cf - .  > qemu.tar
 
 install: qemu.tar
 	rm -rf $(QEMU_ROOT)

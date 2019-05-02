@@ -23,7 +23,7 @@ test:
 	$(MAKE) -C test
 
 tarfile:
-	tar -C / --numeric-owner --owner=0 --group=0 -czf $(TAR) var/lib/runq
+	tar -C / --numeric-owner --owner=0 --group=0 -czf $(TAR) $(RUNQ_ROOT)
 
 release: image
 	docker run --rm -v $(CURDIR):/go/src/github.com/gotoz/runq -v /usr/bin/docker-init:/usr/bin/docker-init:ro runq-build make clean install tarfile clean2

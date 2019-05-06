@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// disktype detects the type of a disk at the given path
 func disktype(path string) (vm.Disktype, error) {
 	qcowMagic := []byte{0x51, 0x46, 0x49, 0xfb}
 
@@ -21,11 +22,12 @@ func disktype(path string) (vm.Disktype, error) {
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
-
-	if !fileInfo.Mode().IsRegular() {
-		return 0, fmt.Errorf("not a regular file: %s", path)
+	if fileInfo.Mode()&os.ModeDevice > 0 {
+		return vm.BlockDevice, nil
 	}
-
+	if !fileInfo.Mode().IsRegular() {
+		return vm.DisktypeUnknown, nil
+	}
 	if fileInfo.Size() < 4 {
 		return vm.RawFile, nil
 	}
@@ -95,7 +97,10 @@ func updateDisks(disks []vm.Disk) error {
 		if d.Type == vm.DisktypeUnknown {
 			dt, err := disktype(d.Path)
 			if err != nil {
-				return fmt.Errorf("can't get disktype of %q: %v", d.Path, err)
+				return fmt.Errorf("%s: detect disktype failed: %v", d.Path, err)
+			}
+			if dt == vm.DisktypeUnknown {
+				return fmt.Errorf("%s: unknown disktype", d.Path)
 			}
 			d.Type = dt
 		}

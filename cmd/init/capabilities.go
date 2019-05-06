@@ -9,11 +9,9 @@ import (
 	"github.com/syndtr/gocapability/capability"
 )
 
-// capMap stores all available capabilities.
-var capMap map[string]capability.Cap
-
-func init() {
-	capMap = make(map[string]capability.Cap)
+func dropCapabilities(vmcaps vm.AppCapabilities) error {
+	// capMap stores all available capabilities.
+	capMap := make(map[string]capability.Cap)
 	for _, v := range capability.List() {
 		if v > capability.CAP_LAST_CAP {
 			continue
@@ -21,22 +19,20 @@ func init() {
 		k := fmt.Sprintf("CAP_%s", strings.ToUpper(v.String()))
 		capMap[k] = v
 	}
-}
 
-// listToCap converts list of capability strings into capability types.
-func listToCap(list []string) ([]capability.Cap, error) {
-	var caps []capability.Cap
-	for _, v := range list {
-		c, ok := capMap[v]
-		if !ok {
-			return nil, errors.Errorf("unknown capability %q", v)
+	// listToCap converts list of capability strings into capability types.
+	listToCap := func(list []string) ([]capability.Cap, error) {
+		var caps []capability.Cap
+		for _, v := range list {
+			c, ok := capMap[v]
+			if !ok {
+				return nil, errors.Errorf("unknown capability %q", v)
+			}
+			caps = append(caps, c)
 		}
-		caps = append(caps, c)
+		return caps, nil
 	}
-	return caps, nil
-}
 
-func dropCapabilities(vmcaps vm.AppCapabilities) error {
 	var minCaps = []string{"CAP_SETGID", "CAP_SETUID", "CAP_SYS_ADMIN"}
 
 	p, err := capability.NewPid(0)

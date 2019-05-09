@@ -39,16 +39,16 @@ cleanup
 # example Docker network with custom network address
 #
   # create network
-  docker network create --subnet=172.31.0.0/16 mynet
+  docker network create --subnet=172.30.0.0/16 mynet
 
   # start DNS proxy container with fixed IP (runc)
-  docker run --runtime runc --net mynet --cap-add=NET_ADMIN --ip 172.31.0.254 --name dns1 -d dnsmasq
-  docker run --runtime runc --net mynet --cap-add=NET_ADMIN --ip 172.31.0.253 --name dns2 -d dnsmasq
+  docker run --runtime runc --net mynet --cap-add=NET_ADMIN --ip 172.30.0.254 --name dns1 -d dnsmasq
+  docker run --runtime runc --net mynet --cap-add=NET_ADMIN --ip 172.30.0.253 --name dns2 -d dnsmasq
 
   # start named runq container
   docker run --net mynet --name foo --runtime runq --rm -td alpine sh
 
   # resolve foo's IP via DNS proxy
-  docker run --net mynet --runtime runq --rm -e RUNQ_DNS=172.31.0.254,172.31.0.253 alpine ping -c 3 foo
+  docker run --net mynet --runtime runq --rm -e RUNQ_DNS=172.30.0.254,172.30.0.253 alpine ping -c 3 foo
 
 checkrc $? 0 "dnsproxy by IP address"

@@ -12,14 +12,17 @@ import (
 // Port is the listening port number of vsockd process.
 const Port = 1
 
+// control bytes
 const (
-	TypeControlConn byte = iota
-	TypeExecuteConn
-	Done
+	TypeControlConn byte = iota // connection to submit a new job
+	TypeExecuteConn             // connection to start a job and handle IO
+	Done                        // indicates that the job has finished
 )
 
+// JobID is used to connect a control connection to an execute connection.
 type JobID [4]byte
 
+// JobRequest defines a command to run inside a runq vm.
 type JobRequest struct {
 	Args      []string
 	Env       []string
@@ -27,6 +30,7 @@ type JobRequest struct {
 	WithTTY   bool
 }
 
+// Encode encodes a job request into gob binary format.
 func (jr JobRequest) Encode() ([]byte, error) {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
@@ -36,6 +40,7 @@ func (jr JobRequest) Encode() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// DecodeJobRequest decodes a byte buffer into a job request object.
 func DecodeJobRequest(buf []byte) (*JobRequest, error) {
 	dec := gob.NewDecoder(bytes.NewBuffer(buf))
 	ec := new(JobRequest)

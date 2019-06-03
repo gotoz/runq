@@ -13,15 +13,15 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-// A Msgtype declares the type of a message to be
-// exchanged between proxy and init.
+// Msgtype declares the type of a message.
 type Msgtype uint8
 
+// Message types
 const (
-	MsgtypeUnknown Msgtype = iota
-	Command                // command to execute
-	Signal                 // IPC signal such as SIGTERM
-	Vmdata                 // VM config data
+	_       Msgtype = iota
+	Command         // command to execute
+	Signal          // IPC signal such as SIGTERM
+	Vmdata          // VM config data
 )
 
 // Msg defines the format of the data exchanged between proxy and init.
@@ -33,6 +33,7 @@ type Msg struct {
 // Disktype represents a valid disk types.
 type Disktype int
 
+// known disk types
 const (
 	DisktypeUnknown Disktype = iota // disk type is not known
 	BlockDevice                     // regular block device
@@ -95,7 +96,7 @@ type User struct {
 	AdditionalGids []uint32
 }
 
-// Certificates
+// Certificates definenes TLS certificates
 type Certificates struct {
 	CACert []byte
 	Cert   []byte
@@ -190,7 +191,7 @@ func DecodeVsockdGob(buf []byte) (*Vsockd, error) {
 	return v, nil
 }
 
-// ZipEncodeBase64 encodes arbitray data into a gziped binary Gob
+// ZipEncodeBase64 encodes arbritray data into a gziped binary Gob
 // and returns it encoded as base64.
 func ZipEncodeBase64(data interface{}) (string, error) {
 	var buf bytes.Buffer

@@ -104,7 +104,7 @@ func run() int {
 		return 1
 	}
 
-    // genrate cid from first 8 characters of container ID
+	// generate cid from first 8 characters of container ID
 	cid, err := vs.ContextID(containerID)
 	if err != nil {
 		log.Print(err)
@@ -128,7 +128,7 @@ func run() int {
 
 	buf := append([]byte{vs.TypeControlConn}, jrGob...)
 	if _, err := tlsConn.Write(buf); err != nil {
-		log.Printf("failed to send inital request: %v", err)
+		log.Printf("failed to send initial request: %v", err)
 		return 1
 	}
 

@@ -1,6 +1,6 @@
 include ../../make.rules
 
-LD_FLAGS := -ldflags="-X main.gitCommit=$(GIT_COMMIT)"
+LD_FLAGS := -ldflags="-s -w -X main.gitCommit=$(GIT_COMMIT)"
 
 runq-exec: $(shell find . -name '*.go')
 	$(GO) build $(LD_FLAGS)

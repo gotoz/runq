@@ -113,6 +113,7 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 		Args:            spec.Process.Args,
 		Cwd:             spec.Process.Cwd,
 		NoNewPrivileges: spec.Process.NoNewPrivileges,
+		Runqenv:         context.GlobalBool("runqenv"),
 		Terminal:        spec.Process.Terminal,
 	}
 

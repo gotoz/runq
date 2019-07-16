@@ -14,7 +14,10 @@ const MinMem = 64
 // KernelParameters defines kernel boot parameters.
 const KernelParameters = "console=ttyS0 panic=1 module.sig_enforce=1 loglevel=3"
 
-// ReaperInterval defines the frequncy of the reaper runs.
+// Envfile contains all entrypoint environment variables.
+const Envfile = "/.runqenv"
+
+// ReaperInterval defines the frequency of the process reaper.
 var ReaperInterval = time.Second * 60
 
 // SysctlDefault defines default system settings.

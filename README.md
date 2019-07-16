@@ -161,6 +161,13 @@ the container work as expected.(The exit code of systemd must be handled differe
 See [test/examples/Dockerfile.systemd](test/examples/Dockerfile.systemd)
 and [test/examples/systemd.sh](test/examples/systemd.sh) for an example.
 
+### /.runqenv
+Runq can write the container environment variables in a file named `/.runqenv` placed in
+the root directroy of the container. This might be useful for containers running Systemd
+as entry point. This feature can be enabled globally by configuring `--runqenv` in
+[/etc/docker/daemon.json](test/testdata/daemon.json) or for a single container via the
+environment variable `RUNQ_RUNQENV`.
+
 ## runq Components
 ```
    docker cli

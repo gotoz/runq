@@ -113,6 +113,7 @@ type Entrypoint struct {
 	Env             []string
 	NoNewPrivileges bool
 	Rlimits         map[string]Rlimit
+	Runqenv         bool
 	SeccompGob      []byte
 	Terminal        bool
 }

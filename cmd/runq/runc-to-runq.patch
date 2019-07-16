@@ -1,8 +1,8 @@
 diff --git a/exec.go b/exec.go
-index ae8e60e4..f89ddeeb 100644
+index 62ab4662..c63b1f08 100644
 --- a/exec.go
 +++ b/exec.go
-@@ -91,6 +91,7 @@ following will output a list of processes running in the container:
+@@ -95,6 +95,7 @@ following will output a list of processes running in the container:
  		},
  	},
  	Action: func(context *cli.Context) error {
@@ -11,10 +11,10 @@ index ae8e60e4..f89ddeeb 100644
  			return err
  		}
 diff --git a/main.go b/main.go
-index 072447d1..0cd75134 100644
+index 072447d1..09ba3ec8 100644
 --- a/main.go
 +++ b/main.go
-@@ -112,6 +112,44 @@ func main() {
+@@ -112,6 +112,48 @@ func main() {
  			Value: "auto",
  			Usage: "ignore cgroup permission errors ('true', 'false', or 'auto')",
  		},
@@ -55,6 +55,10 @@ index 072447d1..0cd75134 100644
 +		cli.BoolFlag{
 +			Name:  "noexec",
 +			Usage: "disable runq exec",
++		},
++		cli.BoolFlag{
++			Name:  "runqenv",
++			Usage: "enable writing of /.runqenv",
 +		},
  	}
  	app.Commands = []cli.Command{

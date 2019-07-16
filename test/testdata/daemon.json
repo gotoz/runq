@@ -9,7 +9,8 @@
         "--dns-opts", "timeout:2",
         "--dns-search", "example.com",
         "--tmpfs", "/tmp,/var/tmp",
-        "--noexec"
+        "--noexec",
+        "--runqenv"
       ]
     }
   }

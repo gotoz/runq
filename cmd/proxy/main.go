@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -226,6 +227,7 @@ func completeVmdata(vmdata *vm.Data) error {
 	vmdata.Hostname = os.Getenv("HOSTNAME")
 	home := util.UserHome(int(vmdata.Entrypoint.UID))
 	vmdata.Entrypoint.Env = append(vmdata.Entrypoint.Env, fmt.Sprintf("HOME=%s", home))
+	sort.Strings(vmdata.Entrypoint.Env)
 
 	val, ok := os.LookupEnv("RUNQ_DNS")
 	if ok {
@@ -284,6 +286,10 @@ func completeVmdata(vmdata *vm.Data) error {
 		}
 		vmdata.Vsockd.EntrypointEnv = make([]string, len(vmdata.Entrypoint.Env))
 		copy(vmdata.Vsockd.EntrypointEnv, vmdata.Entrypoint.Env)
+	}
+
+	if _, ok := os.LookupEnv("RUNQ_RUNQENV"); ok {
+		vmdata.Entrypoint.Runqenv = true
 	}
 
 	arg0 := vmdata.Entrypoint.Args[0]

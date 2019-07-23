@@ -332,6 +332,10 @@ func completeVmdata(vmdata *vm.Data) error {
 		vmdata.Entrypoint.Runqenv = true
 	}
 
+	if _, ok := os.LookupEnv("RUNQ_SYSTEMD"); ok {
+		vmdata.Entrypoint.Systemd = true
+	}
+
 	arg0 := vmdata.Entrypoint.Args[0]
 	if arg0 == "/dev/init" {
 		if _, err := os.Stat(arg0); err == nil {

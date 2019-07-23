@@ -62,8 +62,10 @@ func runEntrypoint() error {
 		}
 	}
 
-	if err := mountEntrypointCgroups(); err != nil {
-		return err
+	if !entrypoint.Systemd {
+		if err := mountEntrypointCgroups(); err != nil {
+			return err
+		}
 	}
 
 	if err := maskPath(vm.MaskedPaths); err != nil {

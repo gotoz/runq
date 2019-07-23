@@ -165,7 +165,7 @@ func runInit() error {
 		shutdown(util.ErrorToRc(err))
 	}
 	pidEntrypoint := entrypoint.Process.Pid
-	go wait4Entrypoint(pidEntrypoint, vmdata.Entrypoint.Args[0])
+	go wait4Entrypoint(pidEntrypoint, vmdata.Entrypoint.Systemd)
 
 	// Start vsockd process.
 	if vmdata.Vsockd.CID != 0 {
@@ -218,11 +218,11 @@ func wait4Vsockd(pid int) {
 // wait4Entrypoint waits for the entrypoint process to finsh and then call
 // shutdown with an exit code following Docker exit codes which in fact
 // follow Bash exit codes.
-// If the entrypoint is /sbin/init (e.g. Systemd) the exit code must be treated
+// Running Systemd as Docker entrypoint the exit code must be treated
 // differently. Init terminates by sending SIGINT or SIGHUP to itself.
-//   poweroff, halt -> SIGINT -> no restart
-//   reboot         -> SIGHUP -> restart
-func wait4Entrypoint(pid int, arg0 string) {
+//   poweroff, halt -> SIGINT (2)-> no container restart -> exit code 0 (forced)
+//   reboot         -> SIGHUP (1)-> container restart	 -> exit code 1
+func wait4Entrypoint(pid int, systemd bool) {
 	var wstatus unix.WaitStatus
 	_, err := unix.Wait4(pid, &wstatus, 0, nil)
 	switch {
@@ -232,7 +232,7 @@ func wait4Entrypoint(pid int, arg0 string) {
 		shutdown(uint8(wstatus.ExitStatus()), "")
 	case wstatus.Signaled():
 		sig := wstatus.Signal()
-		if strings.Contains(arg0, "/sbin/init") {
+		if systemd {
 			switch sig {
 			case unix.SIGINT:
 				shutdown(0, "")

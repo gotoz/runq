@@ -154,9 +154,15 @@ docker run \
 ```
 
 ### Container with Systemd
-To run images that have their own init program such as Systemd the entry-point string
-must contain `/sbin/init`. This ensures that `poweroff` and `reboot` executed inside
-the container work as expected.(The exit code of systemd must be handled differently.)
+For containers that use Systemd as the Docker entry-point the container exit
+code must be treated differently to ensure that `poweroff` and `reboot` executed
+inside the container work as expected.
+```
+with --restart on-failure:1'
+poweroff, halt -> SIGINT(2) -> want container restart       -> exit code 0 (forced)
+reboot         -> SIGHUP(1) -> don't want container restart -> exit code 1
+```
+`-e RUNQ_SYSTEMD=1` also prevents runq from mounting cgroups.
 
 See [test/examples/Dockerfile.systemd](test/examples/Dockerfile.systemd)
 and [test/examples/systemd.sh](test/examples/systemd.sh) for an example.

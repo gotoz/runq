@@ -115,6 +115,7 @@ type Entrypoint struct {
 	Rlimits         map[string]Rlimit
 	Runqenv         bool
 	SeccompGob      []byte
+	Systemd         bool
 	Terminal        bool
 }
 

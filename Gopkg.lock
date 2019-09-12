@@ -2,12 +2,20 @@
 
 
 [[projects]]
-  digest = "1:47dc4f6ee8a7dda99b516b56cb7fcc4f53ca94756263bdcea55c918a60126062"
+  digest = "1:385dff5bf83bf1c9d40ef2b0f2e697f0d1973fc9e24ae9401cf41698612bbebc"
+  name = "github.com/creack/pty"
+  packages = ["."]
+  pruneopts = ""
+  revision = "2769f65a3a94eb8f876f44a0459d24ae7ad2e488"
+  version = "v1.1.7"
+
+[[projects]]
+  digest = "1:3e2fbf3f6d30c4c009be006f9d2a9eaefc804d8f6b991e88cb793b87318cc5bc"
   name = "github.com/kr/pty"
   packages = ["."]
   pruneopts = ""
-  revision = "521317be5ebc228a0f0ede099fa2a0b5ece22e49"
-  version = "v1.1.4"
+  revision = "24b51915630e1d9d3c6adf15a3a96796bbc3cd43"
+  version = "v1.1.8"
 
 [[projects]]
   digest = "1:7937d478555f270b514fa036cc499a1c19409f04ce0a8e92ab35b0f1ad0cfada"
@@ -56,41 +64,41 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e790bf4ad2a216d33725bf35b8bb386c3c584869b5ee4ac8027eefd9853f9ad4"
+  digest = "1:d79d992ec131f6bef5611cff39d70e64b4601bc2ddc404f2ff28745dd1d5f51d"
   name = "github.com/vishvananda/netlink"
   packages = [
     ".",
     "nl",
   ]
   pruneopts = ""
-  revision = "f504738125a57f35f87fc30fb69b8df75237ccde"
+  revision = "a1c9a648f744c90cd1b03af9aa8bb1e92daa116f"
 
 [[projects]]
   branch = "master"
-  digest = "1:c09fddfdd491edaa4383396503e57023a26e5a824283a78c2310613a1252c649"
+  digest = "1:638338a8966ddff52fd1153bcd75d83be700ba1c388e823ce642399c0b46c472"
   name = "github.com/vishvananda/netns"
   packages = ["."]
   pruneopts = ""
-  revision = "13995c7128ccc8e51e9a6bd2b551020a27180abd"
+  revision = "7109fa855b0ff1ebef7fbd2f6aa613e8db7cfbc0"
 
 [[projects]]
   branch = "master"
-  digest = "1:36ef1d8645934b1744cc7d8726e00d3dd9d8d84c18617bf7367a3a6d532f3370"
+  digest = "1:c3b737126c08fa82da30169dff76cee24db554013cd051e9cc888dcc079292e6"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = ""
-  revision = "a5d413f7728c81fb97d96a2b722368945f651e78"
+  revision = "094676da4a83be5288d281081bba63a173ce6772"
 
 [[projects]]
   branch = "master"
-  digest = "1:1b0de777d8ddd63356d5a4d76799ea8f47e811aa9dda85ddc72b2a061c799cc9"
+  digest = "1:7340151bcf028f4deae54d53a3ab97840214b4b5dabaf1be7c9e16fae9c714ff"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "9eb1bfa1ce65ae8a6ff3114b0aaf9a41a6cf3560"
+  revision = "bbd175535a8b9969bb0b33f1502f681ee0b122bd"
 
 [solve-meta]
   analyzer-name = "dep"

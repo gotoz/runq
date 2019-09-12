@@ -89,6 +89,7 @@ const (
 	SizeofTcU32Key       = 0x10
 	SizeofTcU32Sel       = 0x10 // without keys
 	SizeofTcGen          = 0x14
+	SizeofTcConnmark     = SizeofTcGen + 0x04
 	SizeofTcMirred       = SizeofTcGen + 0x08
 	SizeofTcPolice       = 2*SizeofTcRateSpec + 0x20
 )
@@ -647,10 +648,46 @@ const (
 	TCA_BPF_FD
 	TCA_BPF_NAME
 	TCA_BPF_FLAGS
-	TCA_BPF_MAX = TCA_BPF_FLAGS
+	TCA_BPF_FLAGS_GEN
+	TCA_BPF_TAG
+	TCA_BPF_ID
+	TCA_BPF_MAX = TCA_BPF_ID
 )
 
 type TcBpf TcGen
+
+const (
+	TCA_ACT_CONNMARK = 14
+)
+
+const (
+	TCA_CONNMARK_UNSPEC = iota
+	TCA_CONNMARK_PARMS
+	TCA_CONNMARK_TM
+	TCA_CONNMARK_MAX = TCA_CONNMARK_TM
+)
+
+// struct tc_connmark {
+//   tc_gen;
+//   __u16 zone;
+// };
+
+type TcConnmark struct {
+	TcGen
+	Zone uint16
+}
+
+func (msg *TcConnmark) Len() int {
+	return SizeofTcConnmark
+}
+
+func DeserializeTcConnmark(b []byte) *TcConnmark {
+	return (*TcConnmark)(unsafe.Pointer(&b[0:SizeofTcConnmark][0]))
+}
+
+func (x *TcConnmark) Serialize() []byte {
+	return (*(*[SizeofTcConnmark]byte)(unsafe.Pointer(x)))[:]
+}
 
 const (
 	TCA_ACT_MIRRED = 8

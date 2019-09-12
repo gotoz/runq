@@ -2,7 +2,7 @@ include ../../make.rules
 
 export GOPATH := $(shell go env GOPATH | cut -d: -f1)
 
-RUNC_REV := v1.0.0-rc7
+RUNC_REV := v1.0.0-rc8
 RUNC_PATH := $(GOPATH)/src/github.com/opencontainers/runc
 EXTRA_LDFLAGS := "-X main.runqCommit=$(GIT_COMMIT)"
 

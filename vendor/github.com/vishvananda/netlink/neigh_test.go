@@ -4,6 +4,7 @@ package netlink
 
 import (
 	"net"
+	"syscall"
 	"testing"
 	"time"
 
@@ -57,16 +58,16 @@ func dumpContainsProxy(dump []Neigh, p proxyEntry) bool {
 }
 
 func TestNeighAddDelLLIPAddr(t *testing.T) {
-	setUpNetlinkTestWithKModule(t, "ipip")
+	setUpNetlinkTestWithKModule(t, "ip_gre")
 
 	tearDown := setUpNetlinkTest(t)
 	defer tearDown()
 
-	dummy := Iptun{
+	dummy := Gretun{
 		LinkAttrs: LinkAttrs{Name: "neigh0"},
-		PMtuDisc:  1,
 		Local:     net.IPv4(127, 0, 0, 1),
-		Remote:    net.IPv4(127, 0, 0, 1)}
+		IKey:      1234,
+		OKey:      1234}
 	if err := LinkAdd(&dummy); err != nil {
 		t.Errorf("Failed to create link: %v", err)
 	}
@@ -92,7 +93,6 @@ func TestNeighAddDelLLIPAddr(t *testing.T) {
 
 	if !dumpContainsNeigh(dump, entry) {
 		t.Errorf("Dump does not contain: %v: %v", entry, dump)
-
 	}
 
 	// Delete the entry
@@ -256,13 +256,25 @@ func TestNeighAddDelProxy(t *testing.T) {
 	}
 }
 
-// expectNeighUpdate returns whether the expected updated is received within one second.
-func expectNeighUpdate(ch <-chan NeighUpdate, t uint16, state int, ip net.IP) bool {
+// expectNeighUpdate returns whether the expected updates are received within one second.
+func expectNeighUpdate(ch <-chan NeighUpdate, expected []NeighUpdate) bool {
 	for {
 		timeout := time.After(time.Second)
 		select {
 		case update := <-ch:
-			if update.Type == t && update.Neigh.State == state && update.Neigh.IP != nil && update.Neigh.IP.Equal(ip) {
+			var toDelete []int
+			for index, elem := range expected {
+				if update.Type == elem.Type &&
+					update.Neigh.State == elem.Neigh.State &&
+					update.Neigh.IP != nil &&
+					update.Neigh.IP.Equal(elem.Neigh.IP) {
+					toDelete = append(toDelete, index)
+				}
+			}
+			for done, index := range toDelete {
+				expected = append(expected[:index-done], expected[index-done+1:]...)
+			}
+			if len(expected) == 0 {
 				return true
 			}
 		case <-timeout:
@@ -303,13 +315,21 @@ func TestNeighSubscribe(t *testing.T) {
 	if err := NeighAdd(entry); err != nil {
 		t.Errorf("Failed to NeighAdd: %v", err)
 	}
-	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_REACHABLE, entry.IP) {
+	if !expectNeighUpdate(ch, []NeighUpdate{NeighUpdate{
+		Type:  unix.RTM_NEWNEIGH,
+		Neigh: *entry,
+	}}) {
 		t.Fatalf("Add update not received as expected")
 	}
 	if err := NeighDel(entry); err != nil {
 		t.Fatal(err)
 	}
-	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_FAILED, entry.IP) {
+	if !expectNeighUpdate(ch, []NeighUpdate{NeighUpdate{
+		Type: unix.RTM_NEWNEIGH,
+		Neigh: Neigh{
+			State: NUD_FAILED,
+			IP:    entry.IP},
+	}}) {
 		t.Fatalf("Del update not received as expected")
 	}
 }
@@ -357,7 +377,10 @@ func TestNeighSubscribeWithOptions(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to NeighAdd: %v", err)
 	}
-	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_REACHABLE, entry.IP) {
+	if !expectNeighUpdate(ch, []NeighUpdate{NeighUpdate{
+		Type:  unix.RTM_NEWNEIGH,
+		Neigh: *entry,
+	}}) {
 		t.Fatalf("Add update not received as expected")
 	}
 }
@@ -408,7 +431,10 @@ func TestNeighSubscribeAt(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to NeighAdd: %v", err)
 	}
-	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_REACHABLE, entry.IP) {
+	if !expectNeighUpdate(ch, []NeighUpdate{NeighUpdate{
+		Type:  unix.RTM_NEWNEIGH,
+		Neigh: *entry,
+	}}) {
 		t.Fatalf("Add update not received as expected")
 	}
 }
@@ -440,6 +466,17 @@ func TestNeighSubscribeListExisting(t *testing.T) {
 		}
 	}()
 
+	vxlani := &Vxlan{LinkAttrs: LinkAttrs{Name: "neigh1"}, VxlanId: 1}
+	if err := nh.LinkAdd(vxlani); err != nil {
+		t.Errorf("Failed to create link: %v", err)
+	}
+	ensureIndex(vxlani.Attrs())
+	defer func() {
+		if err := nh.LinkDel(vxlani); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
 	entry1 := &Neigh{
 		LinkIndex:    dummy.Index,
 		State:        NUD_REACHABLE,
@@ -447,7 +484,20 @@ func TestNeighSubscribeListExisting(t *testing.T) {
 		HardwareAddr: parseMAC("aa:bb:cc:dd:00:01"),
 	}
 
+	entryBr := &Neigh{
+		Family:       syscall.AF_BRIDGE,
+		LinkIndex:    vxlani.Index,
+		State:        NUD_PERMANENT,
+		Flags:        NTF_SELF,
+		IP:           net.IPv4(198, 51, 100, 3),
+		HardwareAddr: parseMAC("aa:bb:cc:dd:00:03"),
+	}
+
 	err = nh.NeighAdd(entry1)
+	if err != nil {
+		t.Errorf("Failed to NeighAdd: %v", err)
+	}
+	err = nh.NeighAppend(entryBr)
 	if err != nil {
 		t.Errorf("Failed to NeighAdd: %v", err)
 	}
@@ -463,7 +513,16 @@ func TestNeighSubscribeListExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_REACHABLE, entry1.IP) {
+	if !expectNeighUpdate(ch, []NeighUpdate{
+		NeighUpdate{
+			Type:  unix.RTM_NEWNEIGH,
+			Neigh: *entry1,
+		},
+		NeighUpdate{
+			Type:  unix.RTM_NEWNEIGH,
+			Neigh: *entryBr,
+		},
+	}) {
 		t.Fatalf("Existing add update not received as expected")
 	}
 
@@ -479,7 +538,10 @@ func TestNeighSubscribeListExisting(t *testing.T) {
 		t.Errorf("Failed to NeighAdd: %v", err)
 	}
 
-	if !expectNeighUpdate(ch, unix.RTM_NEWNEIGH, NUD_PERMANENT, entry2.IP) {
+	if !expectNeighUpdate(ch, []NeighUpdate{NeighUpdate{
+		Type:  unix.RTM_NEWNEIGH,
+		Neigh: *entry2,
+	}}) {
 		t.Fatalf("Existing add update not received as expected")
 	}
 }

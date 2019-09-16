@@ -40,10 +40,10 @@ checkrc $? 0  "rootfs is on block device"
 checkrc $? 1 "directory has been excluded"
 
 /var/lib/runq/runq-exec $name sh -c "echo foobar > /etc/passwd"
-checkrc $? 0 "passwd has been updated"
+checkrc $? 0 "update file"
 
 /var/lib/runq/runq-exec $name sh -c "grep foobar /etc/passwd"
-checkrc $? 0 "passwd has new content"
+checkrc $? 0 "updated file is correct"
 
 docker stop $name
 checkrc $? 0 "container has been stopped"

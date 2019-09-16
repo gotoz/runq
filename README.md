@@ -346,8 +346,8 @@ docker run --device /dev/sdb2:/dev/runq/0003/writethrough ...
 ```
 
 ### Rootdisk (experimental)
-A block device with an empty ext2 or ext4 filesytem can be marked as rootdisk of the VM.
-At first boot of the container the whole Docker image will be coppied into the rootdisk.
+A block device or raw file with an empty ext2 or ext4 filesytem can be used as rootdisk
+of the VM.  At first boot of the container the whole Docker image will be coppied into the rootdisk.
 The rootdisk will then be used as rootfs instead of 9pfs.
 ```
 docker run --device /dev/sdb1:/dev/runq/0001/none/ext4 -e RUNQ_ROOTDISK=0001 ...

@@ -352,15 +352,8 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 			})
 
 			// /dev/loop*
-			major, err = parseProcDevice("loop")
-			if err != nil {
-				return err
-			}
-			if major == 0 {
-				return fmt.Errorf("can't get major device number of loop device (try modprobe loop)")
-			}
 			spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
-				Allow: true, Type: "b", Major: iPtr(major), Access: "rwm",
+				Allow: true, Type: "b", Major: iPtr(7), Access: "rwm",
 			})
 			break
 		}

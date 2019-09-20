@@ -11,8 +11,6 @@ cleanup() {
 }
 trap cleanup 0 2 15
 
-modprobe loop &>/dev/null
-
 dd if=/dev/zero of=$file bs=1M count=100 >/dev/null
 mkfs.ext4 -F $file
 

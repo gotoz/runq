@@ -79,18 +79,18 @@ systemctl reload docker.service
 
 #### TLS certificates
 *runq-exec* creates a secure connection between host and VM guests. Users of *runq-exec* are
-authenticated via a client certificate. Access to the client certificate must be limitted to
+authenticated via a client certificate. Access to the client certificate must be limited to
 Docker users only.
 
 The CA and server certificates must be installed in `/var/lib/runq/qemu/certs`.
-Access must be limmited to the root user only.
+Access must be limited to the root user only.
 
 Examples of server and client TLS certificates can be created with the script:
 ```
 /var/lib/runq/qemu/mkcerts.sh
 ```
 Note: The host must provide sufficient entropy to the VM guests. If there is not enough
-entropie available booting of guests can fail with a timeout error. The entropy that's
+entropy available booting of guests can fail with a timeout error. The entropy that's
 currently available can be checked with:
 ```
 cat /proc/sys/kernel/random/entropy_avail
@@ -117,7 +117,7 @@ custom VM with 512MiB memory and 2 CPUs
 docker run --runtime runq -e RUNQ_MEM=512 -e RUNQ_CPU=2 -ti busybox sh
 ```
 
-allow loading of extra kernel modules by adding the SYS_MODULE capabilitiy
+allow loading of extra kernel modules by adding the SYS_MODULE capability
 ```
 docker run --runtime runq --cap-add sys_module -ti busybox sh -c "modprobe brd && lsmod"
 
@@ -169,7 +169,7 @@ and [test/examples/systemd.sh](test/examples/systemd.sh) for an example.
 
 ### /.runqenv
 Runq can write the container environment variables in a file named `/.runqenv` placed in
-the root directroy of the container. This might be useful for containers running Systemd
+the root directory of the container. This might be useful for containers running Systemd
 as entry point. This feature can be enabled globally by configuring `--runqenv` in
 [/etc/docker/daemon.json](test/testdata/daemon.json) or for a single container via the
 environment variable `RUNQ_RUNQENV`.
@@ -283,7 +283,7 @@ For this SYS_MODULES capability is required (`--cap-add sys_modules`).
 
 ## Networking
 runq uses Macvtap devices to connect Qemu VirtIO interfaces to Docker
-bridges. By default a single ethernet interface is created.
+bridges. By default a single Ethernet interface is created.
 Multiple networks can be used by connecting a container to the networks
 before start. See [test/integration/net.sh](test/integration/net.sh) as an
 example.
@@ -310,7 +310,7 @@ Environment variables have priority over global options.
 ## Storage
 Extra storage can be added in the form of Qcow2 images, raw file images or
 regular block devices. Storage devices will be mounted automatically if
-a filesytem and a mount point has been specified.
+a filesystem and a mount point has been specified.
 Supported filesystems are ext2, ext3, ext4, xfs and btrfs.
 Cache type must be writeback, writethrough, none or unsafe.
 Cache type "none" is recommended for filesystems that support `O_DIRECT`.
@@ -345,17 +345,23 @@ Attach the host device `/dev/sdb2` without mounting:
 docker run --device /dev/sdb2:/dev/runq/0003/writethrough ...
 ```
 
-### Rootdisk (experimental)
-A block device with an empty ext2 or ext4 filesytem can be marked as rootdisk of the VM.
-At first boot of the container the whole Docker image will be coppied into the rootdisk.
-The rootdisk will then be used as rootfs instead of 9pfs.
+### Rootdisk
+A block device or a raw file with an EXT2 or EXT4 filesystem can be used as rootdisk
+of the VM. On first boot of the container the content of the Docker image is copied into the rootdisk.
+The block device or raw file will then be used as root filesystem via virtio-blk instead of 9pfs. But be aware that changes to the root filesystem will not be reflected in the source docker container filesystem. (`docker cp` will no longer work as expected)
 ```
-docker run --device /dev/sdb1:/dev/runq/0001/none/ext4 -e RUNQ_ROOTDISK=0001 ...
-```
-Directories can be excluded from beeing coppied with the RUNQ_ROOTDISK_EXCLUDE environment
-variable. E.g. `-e RUNQ_ROOTDISK_EXCLUDE="/foo,/bar"
+# existing block device with empty ext4 filesystem
+docker run --runtime runq --device /dev/sdb1:/dev/runq/0001/none/ext4 -e RUNQ_ROOTDISK=0001 -ti alpine sh
 
-See [Dockerfile.rootdisk](test/examples/Dockerfile.rootdisk) and [rootdisk.sh](test/examples/rootdisk.sh) as an example.
+# new raw file
+fallocate -l 1G disk.raw
+mkfs.ext4 disk.raw
+docker run --runtime runq --volume $PWD/disk.raw:/dev/runq/0001/none/ext4 -e RUNQ_ROOTDISK=0001 -ti alpine sh
+```
+Directories can be excluded from being copied with the RUNQ_ROOTDISK_EXCLUDE environment
+variable. E.g. `-e RUNQ_ROOTDISK_EXCLUDE="/foo,/bar"`
+
+See [Dockerfile.rootdisk](test/examples/Dockerfile.rootdisk) and [rootdisk.sh](test/examples/rootdisk.sh) as a further example.
 
 ## Capabilities
 By default runq drops all capabilities except those needed (same as regular Docker does).
@@ -365,7 +371,7 @@ The white list of the remaining capabilities is provided by the Docker engine.
 NET_RAW SETFCAP SETGID SETPCAP SETUID SYS_CHROOT`
 
 See `man capabilities` for a list of all available capabilities.
-Additional Capabilities can be added to the whitelist at container start:
+Additional Capabilities can be added to the white list at container start:
 ```
 docker run --cap-add SYS_TIME --cap-add SYS_MODULE ...`
 ```
@@ -379,7 +385,7 @@ The default profile is defined by the Docker daemon and gets applied automatical
 Note: Only the runq init binary is statically linked against libseccomp.
 Therefore libseccomp is needed only at compile time.
 
-If the host operating system where runq is beeing built does not provide static libseccomp
+If the host operating system where runq is being built does not provide static libseccomp
 libraries one can also simply build and install [libseccomp](https://github.com/seccomp/libseccomp/)
 from the sources.
 
@@ -397,10 +403,10 @@ Security Options:
 ```
 
 ## AP adapter passthrough (s390x only)
-AP devices provide cryptographic functions to all CPUs assigned to a linux system running in
+AP devices provide cryptographic functions to all CPUs assigned to a Linux system running in
 an IBM Z system LPAR. AP devices can be made available to a runq container by passing a VFIO mediated
-device from the host through Qemu into the runq VM guest. VFIO mediaded devices are enabled by the
-`vfio_ap` kernel module and allow for partitioning of AP devices and domains. The environment variable RUNQ_APUUID spcecifies the VFIO mediated device UUID. runq automatically loads the required zcrypt kernel modules inside the VM. E.g.:
+device from the host through Qemu into the runq VM guest. VFIO mediated devices are enabled by the
+`vfio_ap` kernel module and allow for partitioning of AP devices and domains. The environment variable RUNQ_APUUID specifies the VFIO mediated device UUID. runq automatically loads the required zcrypt kernel modules inside the VM. E.g.:
 ```
 docker run --runtime runq -e RUNQ_APUUID=b34543ee-496b-4769-8312-83707033e1de ...
 ```

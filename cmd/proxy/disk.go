@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/gotoz/runq/pkg/loopback"
 	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
 	"golang.org/x/sys/unix"
@@ -138,8 +139,8 @@ func prepareRootdisk(vmdata *vm.Data) error {
 	if err != nil {
 		return err
 	}
-	if dtype == vm.DisktypeUnknown {
-		return fmt.Errorf("rootdisk %s: unknown disktype", disk.Path)
+	if dtype != vm.BlockDevice && dtype != vm.RawFile {
+		return fmt.Errorf("rootdisk %s: unsupported disktype", disk.Path)
 	}
 
 	excl := []string{"/dev", "/lib/modules", "/lost+found", "/proc", "/qemu", "/sys"}
@@ -165,9 +166,33 @@ func prepareRootdisk(vmdata *vm.Data) error {
 	if err := os.Mkdir(dest, 0700); err != nil {
 		return err
 	}
-	if err := unix.Mount(disk.Path, dest, disk.Fstype, 0, ""); err != nil {
-		return fmt.Errorf("mount rootdisk failed: %v", err)
+
+	if dtype == vm.RawFile {
+		loop, err := loopback.New()
+		if err != nil {
+			return err
+		}
+
+		file, err := os.OpenFile(disk.Path, os.O_RDWR, 0600)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		if err := loop.Attach(file); err != nil {
+			return err
+		}
+		defer loop.Detach()
+
+		if err := unix.Mount(loop.Name, dest, disk.Fstype, 0, ""); err != nil {
+			return fmt.Errorf("mount loopback failed: %v", err)
+		}
+	} else {
+		if err := unix.Mount(disk.Path, dest, disk.Fstype, 0, ""); err != nil {
+			return fmt.Errorf("mount rootdisk failed: %v", err)
+		}
 	}
+
 	defer func() {
 		if err := unix.Unmount(dest, unix.MNT_DETACH); err != nil {
 			log.Printf("umount rootdisk failed: %v", err)

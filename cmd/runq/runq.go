@@ -179,6 +179,8 @@ func turnToRunq(context *cli.Context, spec *specs.Spec) error {
 
 func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 	iPtr := func(i int64) *int64 { return &i }
+	filemode := os.FileMode(0600)
+	id := uint32(0)
 
 	// /dev/tap*
 	major, err := macvtapMajor()
@@ -186,7 +188,7 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 		return err
 	}
 	if major == 0 {
-		return fmt.Errorf("can't get macvtap major device number")
+		return fmt.Errorf("can't get major device number of macvtap device")
 	}
 	spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
 		Allow: true, Type: "c", Major: iPtr(major), Access: "rwm",
@@ -196,8 +198,6 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 	spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
 		Allow: true, Type: "c", Major: iPtr(10), Minor: iPtr(232), Access: "rwm",
 	})
-	filemode := os.FileMode(0600)
-	id := uint32(0)
 	spec.Linux.Devices = append(spec.Linux.Devices, specs.LinuxDevice{
 		Path:     "/dev/kvm",
 		Type:     "c",
@@ -330,6 +330,31 @@ func specDevices(spec *specs.Spec, vmdata *vm.Data) error {
 				GID:      &id,
 			})
 
+			break
+		}
+	}
+
+	// loop devices are needed for root disks (raw disks)
+	for _, v := range spec.Process.Env {
+		if strings.HasPrefix(v, "RUNQ_ROOTDISK=") {
+			// /dev/loop-control
+			spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
+				Allow: true, Type: "c", Major: iPtr(10), Minor: iPtr(237), Access: "rwm",
+			})
+			spec.Linux.Devices = append(spec.Linux.Devices, specs.LinuxDevice{
+				Path:     "/dev/loop-control",
+				Type:     "c",
+				Major:    10,
+				Minor:    237,
+				FileMode: &filemode,
+				UID:      &id,
+				GID:      &id,
+			})
+
+			// /dev/loop*
+			spec.Linux.Resources.Devices = append(spec.Linux.Resources.Devices, specs.LinuxDeviceCgroup{
+				Allow: true, Type: "b", Major: iPtr(7), Access: "rwm",
+			})
 			break
 		}
 	}

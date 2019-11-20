@@ -179,7 +179,7 @@ func run(vmdataB64 string) (int, error) {
 		cmd.Process.Kill()
 		msg := "no ack msg from init within 10 sec"
 		if !vmdata.NoExec {
-			msg += ". Not enough entropy available?"
+			msg += ". Possibly not enough entropy."
 		}
 		return 1, fmt.Errorf(msg)
 	}

@@ -31,7 +31,7 @@ docker run \
     -v $disk:/dev/runq/$(uuid)/none/xfs/data/db \
     -d \
     $image \
-      mongod --smallfiles --noprealloc --logappend --dbpath /data/db
+      mongod --logappend --dbpath /data/db
 
 sleep 3
 

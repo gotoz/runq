@@ -168,16 +168,17 @@ func run(vmdataB64 string) (int, error) {
 	}
 
 	// wait for ack message, early failure, or timeout
+	timeout := time.Second * time.Duration(10+vmdata.Mem/2048)
 	select {
 	case <-ackChan:
 		// all good
 	case err = <-doneChan:
 		// qemu exited too early
 		return 1, err
-	case <-time.After(time.Second * 10):
+	case <-time.After(timeout):
 		// init didn't send ack message in time
 		cmd.Process.Kill()
-		msg := "no ack msg from init within 10 sec"
+		msg := fmt.Sprintf("no ack msg from init within %.0f sec", timeout.Seconds())
 		if !vmdata.NoExec {
 			msg += ". Possibly not enough entropy."
 		}

@@ -113,7 +113,7 @@ func runEntrypoint() error {
 	path, err := exec.LookPath(os.Args[1])
 	if err != nil {
 		fmt.Println(err)
-		if strings.Contains(err.Error(), "permission denied") {
+		if e, ok := err.(*exec.Error); ok && e.Err == os.ErrPermission {
 			os.Exit(126)
 		}
 		os.Exit(127)

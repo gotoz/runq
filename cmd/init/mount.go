@@ -166,6 +166,11 @@ func mountEntrypointCgroups() error {
 	}
 	defer file.Close()
 
+	// #subsys_name	hierarchy	num_cgroups	enabled
+	// cpuset	11	1	1
+	// cpu	3	44	1
+	// cpuacct 	3	44	1
+	var links []symlink
 	sc := bufio.NewScanner(file)
 	for sc.Scan() {
 		field := strings.Fields(sc.Text())
@@ -175,19 +180,42 @@ func mountEntrypointCgroups() error {
 		if field[3] != "1" {
 			continue
 		}
+		var data, target string
+		switch field[0] {
+		case "cpu":
+			continue
+		case "cpuacct":
+			data = "cpu,cpuacct"
+			target = "/sys/fs/cgroup/cpu,cpuacct"
+			links = append(links, symlink{target, "cpu"})
+			links = append(links, symlink{target, "cpuacct"})
+		case "net_cls":
+			continue
+		case "net_prio":
+			data = "net_cls,net_prio"
+			target = "/sys/fs/cgroup/net_cls,net_prio"
+			links = append(links, symlink{target, "net_cls"})
+			links = append(links, symlink{target, "net_prio"})
+		default:
+			data = field[0]
+			target = "/sys/fs/cgroup/" + field[0]
+		}
 		mounts = append(mounts, vm.Mount{
 			Source: "cgroup",
-			Target: "/sys/fs/cgroup/" + field[0],
+			Target: target,
 			Fstype: "cgroup",
 			Flags:  unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
-			Data:   field[0],
+			Data:   data,
 		})
 	}
 
 	if err := sc.Err(); err != nil {
 		return errors.WithStack(err)
 	}
-	return mount(mounts...)
+	if err := mount(mounts...); err != nil {
+		return err
+	}
+	return createSymlink(links...)
 }
 
 func mount(mounts ...vm.Mount) error {
@@ -301,4 +329,17 @@ func umountInit() {
 			unix.Unmount(d, unix.MNT_DETACH)
 		}
 	}
+}
+
+type symlink struct {
+	target, newPath string
+}
+
+func createSymlink(links ...symlink) error {
+	for _, l := range links {
+		if err := util.CreateSymlink(l.target, l.newPath); err != nil {
+			return fmt.Errorf("createSymlink %q -> %q failed: %v", l.target, l.newPath, err)
+		}
+	}
+	return nil
 }

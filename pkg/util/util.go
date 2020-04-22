@@ -200,3 +200,25 @@ func ErrorToRc(err error) (uint8, string) {
 
 	return rc, fmt.Sprintf("%+v", err)
 }
+
+// CreateSymlink creates a symbolic link. An existing target will be removed.
+// target path must be absolute.
+func CreateSymlink(target, newPath string) error {
+	newPath = filepath.Clean(newPath)
+	if !filepath.IsAbs(newPath) {
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		if err := os.Chdir(filepath.Dir(target)); err != nil {
+			return err
+		}
+		defer os.Chdir(wd)
+		target = filepath.Base(target)
+	}
+	os.Remove(newPath)
+	if err := os.Symlink(target, newPath); err != nil {
+		return fmt.Errorf("create symlink %q -> %q failed: %v", newPath, target, err)
+	}
+	return nil
+}

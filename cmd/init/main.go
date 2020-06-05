@@ -89,6 +89,12 @@ func runInit() error {
 		shutdown(1, fmt.Sprintf("binary missmatch proxy:%q init:%q", vmdata.GitCommit, gitCommit))
 	}
 
+	if !vmdata.NoExec {
+		if err := loadKernelModules("vsock", ""); err != nil {
+			return err
+		}
+	}
+
 	if !vmdata.Entrypoint.Terminal {
 		if _, err := terminal.MakeRaw(0); err != nil {
 			return errors.WithStack(err)
@@ -96,28 +102,22 @@ func runInit() error {
 	}
 
 	// By default the 9pfs share contains the container root filesystem
-	// including /lib/modules. It's mounted to /rootfs. /rootfs/lib/modules
-	// must then be bind-mounted back to /lib/modules to make modprobe work.
-	//
+	// including /lib/modules.
 	// When using a rootdisk the 9pfs share contains only /lib/modules
-	// which must be bind-mounted into the rootdisk.
 	if vmdata.Rootdisk == "" {
 		if err := mountInitShare("rootfs", "/rootfs"); err != nil {
 			return err
 		}
-		if err := mountInitModulesDir(false); err != nil {
-			return err
-		}
 	} else {
-		if err := mountInitShare("share", "/lib/modules"); err != nil {
-			return err
-		}
 		if err := setupRootdisk(vmdata); err != nil {
 			return err
 		}
-		if err := mountInitModulesDir(true); err != nil {
+		if err := mountInitShare("share", "/rootfs/lib/modules"); err != nil {
 			return err
 		}
+	}
+	if err := util.CreateSymlink("/rootfs/lib/modules", "/lib/modules"); err != nil {
+		return err
 	}
 
 	// Remove empty mountpoint.
@@ -127,12 +127,6 @@ func runInit() error {
 
 	if err := mountInitStage1(vmdata.Mounts); err != nil {
 		return err
-	}
-
-	if !vmdata.NoExec {
-		if err := loadKernelModules("vsock", ""); err != nil {
-			return err
-		}
 	}
 
 	if err := setSysctl(vmdata.Sysctl); err != nil {

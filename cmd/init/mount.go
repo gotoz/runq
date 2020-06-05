@@ -66,38 +66,6 @@ func mountInitStage1(extraMounts []vm.Mount) error {
 	return mount(extraMounts...)
 }
 
-func mountInitModulesDir(rootdisk bool) error {
-	var mounts []vm.Mount
-	if rootdisk {
-		mounts = []vm.Mount{
-			vm.Mount{
-				Source: "/lib/modules",
-				Target: "/rootfs/lib/modules",
-				Flags:  unix.MS_BIND | unix.MS_RDONLY,
-			},
-		}
-	} else {
-		mounts = []vm.Mount{
-			{
-				Source: "/rootfs/lib/modules",
-				Target: "/lib/modules",
-				Flags:  unix.MS_BIND,
-			},
-			{
-				Source: "/rootfs/lib/modules",
-				Target: "/rootfs/lib/modules",
-				Flags:  unix.MS_BIND,
-			},
-			{
-				Source: "/rootfs/lib/modules",
-				Target: "/rootfs/lib/modules",
-				Flags:  unix.MS_REMOUNT | unix.MS_BIND | unix.MS_RDONLY | unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
-			},
-		}
-	}
-	return mount(mounts...)
-}
-
 func mountEntrypointStage0() error {
 	mounts := []vm.Mount{
 		{
@@ -235,6 +203,18 @@ func mount(mounts ...vm.Mount) error {
 	return nil
 }
 
+func bindMountDir(src, target string) error {
+	if !util.DirExists(target) {
+		if err := os.MkdirAll(target, 0755); err != nil {
+			return errors.Errorf("os.MkdirAll failed: %v", err)
+		}
+	}
+	if err := unix.Mount(src, target, "", unix.MS_BIND|unix.MS_RDONLY, ""); err != nil {
+		return fmt.Errorf("bindMountDir failed: src:%s dst:%s reason: %v", src, target, err)
+	}
+	return nil
+}
+
 func bindMountFile(src, target string) error {
 	dir := filepath.Dir(target)
 	if !util.DirExists(dir) {
@@ -248,7 +228,7 @@ func bindMountFile(src, target string) error {
 		}
 	}
 	if err := unix.Mount(src, target, "", unix.MS_BIND|unix.MS_RDONLY, ""); err != nil {
-		return fmt.Errorf("Mount failed: src:%s dst:%s reason: %v", src, target, err)
+		return fmt.Errorf("bindMountFile failed: src:%s dst:%s reason: %v", src, target, err)
 	}
 	return nil
 }

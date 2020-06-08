@@ -21,9 +21,9 @@ docker run \
     --name $(rand_name) \
     --rm \
     --user nobody \
-    --group-add users \
+    --group-add games \
     $image  \
-    sh -c 'id -G -n | grep -w "nogroup users"'
+    sh -c 'id -G -n | grep -w "nobody games"'
 
 checkrc $? 0 "$comment"
 

@@ -29,12 +29,13 @@ checkrc $? 1 "$comment"
 #
 #
 comment="trigger insmod via /proc/sys/kernel/modprobe"
-cmd="modprobe nf_nat_ipv4; grep nf_conntrack_ipv4 /proc/modules"
+cmd="mount -t xfs /foo /mnt 2>/dev/null; grep ^xfs /proc/modules"
 docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
     --cap-add sys_module \
+    --cap-add sys_admin \
     $image sh -c "$cmd"
 
 checkrc $? 0 "$comment"

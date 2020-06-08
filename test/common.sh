@@ -1,6 +1,6 @@
 # vim:ft=sh
 
-image=busybox
+image=alpine
 rc_exit=0
 
 uuid() {

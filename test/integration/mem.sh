@@ -1,9 +1,9 @@
 #!/bin/bash
 . $(cd ${0%/*};pwd;)/../common.sh
 
-comment="use default memory size"
-min=235000
-max=245000
+comment="use default memory size (256MiB)"
+min=220000
+max=260000
 cmd="mem=\$(awk '/MemTotal/{print \$2}' /proc/meminfo); echo mem=\$mem; test \$mem -gt $min -a \$mem -lt $max"
 docker run \
     --runtime runq \
@@ -17,9 +17,9 @@ checkrc $? 0 "$comment"
 #
 #
 #
-comment="set custom memory size"
 runq_mem=512
-min=480000
+comment="set custom memory size (${runq_mem}MiB)"
+min=470000
 max=510000
 cmd="mem=\$(awk '/MemTotal/{print \$2}' /proc/meminfo); echo mem=\$mem; test \$mem -gt $min -a \$mem -lt $max"
 docker run \

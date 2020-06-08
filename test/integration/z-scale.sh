@@ -28,7 +28,7 @@ sleep $n
 
 rc=0
 for p in "${ports[@]}"; do
-    test "$(curl -m $timeout -sS localhost:$p)" = "$p"
+    nc -z localhost $p
     rc=$(($? + rc))
     echo checked localhost:$p $rc
     sleep .5

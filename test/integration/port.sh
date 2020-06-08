@@ -17,7 +17,7 @@ docker run \
 
 sleep 2
 
-test "$(curl -m $timeout -sS localhost:$port)" = "$port"
+nc -z localhost $port
 checkrc $? 0 "$comment"
 
 docker rm -f $name 2>/dev/null
@@ -38,11 +38,11 @@ docker run \
     $image  \
     sh -c "echo $port | nc -l -p $port"
 
-addr="$(docker port $name | awk '{print $NF}')"
+host_port="$(docker port $name | awk -F: '{print $NF}')"
 
 sleep 2
 
-test "$(curl -m $timeout -sS $addr)" = "$port"
+nc -z localhost $host_port
 checkrc $? 0 "$comment"
 
 docker rm -f $name 2>/dev/null

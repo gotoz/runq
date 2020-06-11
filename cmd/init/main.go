@@ -295,15 +295,23 @@ func loadKernelModules(kind, prefix string) error {
 		if strings.HasPrefix(line, "#") || len(line) == 0 {
 			continue
 		}
-		f := strings.Fields(line)
-		if len(f) < 2 {
-			return errors.New("invalid kernel config")
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return fmt.Errorf("invalid kernel config: %q", line)
 		}
-		if f[0] != kind {
+		if fields[0] != kind {
 			continue
 		}
-		if err := util.Insmod(prefix+f[1], f[2:]); err != nil {
+		f, err := os.Open(filepath.Join(prefix + fields[1]))
+		if err != nil {
 			return err
+		}
+		defer f.Close()
+		params := strings.Join(fields[2:], " ")
+		if err := unix.FinitModule(int(f.Fd()), params, 0); err != nil {
+			if !os.IsExist(err) {
+				return fmt.Errorf("load kernel module %q failed: %v", fields[1], err)
+			}
 		}
 	}
 	return errors.WithStack(scanner.Err())

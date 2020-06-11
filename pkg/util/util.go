@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
@@ -79,22 +78,6 @@ func DirExists(path string) bool {
 		return true
 	}
 	return false
-}
-
-// Insmod loads a kernel module.
-func Insmod(path string, args []string) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("insmod %s failed: %v", path, err)
-	}
-	defer f.Close()
-
-	a2 := []byte(strings.Join(args, " ") + "\x00")
-	_, _, errno := unix.Syscall(unix.SYS_FINIT_MODULE, uintptr(f.Fd()), uintptr(unsafe.Pointer(&a2[0])), 0)
-	if errno == 0 || errno == unix.EEXIST {
-		return nil
-	}
-	return fmt.Errorf("insmod %s failed: %v", path, os.NewSyscallError("SYS_FINIT_MODULE", errno))
 }
 
 // MajorMinor returns major and minor device number for a given dev file.

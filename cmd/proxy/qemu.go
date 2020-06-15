@@ -56,7 +56,6 @@ func qemuConfig(vmdata *vm.Data, socket, share string) ([]string, error) {
 		"-nographic",
 		"-no-reboot",
 		"-no-user-config",
-		"-nodefconfig",
 		"-kernel", "/kernel",
 		"-initrd", "/initrd",
 		"-msg", "timestamp=on",

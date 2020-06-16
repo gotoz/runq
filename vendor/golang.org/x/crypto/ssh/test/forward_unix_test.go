@@ -8,7 +8,6 @@ package test
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -32,21 +31,17 @@ func testPortForward(t *testing.T, n, listenAddr string) {
 		t.Fatal(err)
 	}
 
-	errCh := make(chan error, 1)
-
 	go func() {
-		defer close(errCh)
 		sshConn, err := sshListener.Accept()
 		if err != nil {
-			errCh <- fmt.Errorf("listen.Accept failed: %v", err)
-			return
+			t.Fatalf("listen.Accept failed: %v", err)
 		}
-		defer sshConn.Close()
 
 		_, err = io.Copy(sshConn, sshConn)
 		if err != nil && err != io.EOF {
-			errCh <- fmt.Errorf("ssh client copy: %v", err)
+			t.Fatalf("ssh client copy: %v", err)
 		}
+		sshConn.Close()
 	}()
 
 	forwardedAddr := sshListener.Addr().String()
@@ -79,12 +74,6 @@ func testPortForward(t *testing.T, n, listenAddr string) {
 	}
 	if err := netConn.(closeWriter).CloseWrite(); err != nil {
 		t.Errorf("netConn.CloseWrite: %v", err)
-	}
-
-	// Check for errors on server goroutine
-	err = <-errCh
-	if err != nil {
-		t.Fatalf("server: %v", err)
 	}
 
 	read := <-readChan

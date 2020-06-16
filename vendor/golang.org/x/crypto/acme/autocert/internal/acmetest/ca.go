@@ -17,21 +17,15 @@ import (
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
-	"path"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"golang.org/x/crypto/acme"
 )
 
 // CAServer is a simple test server which implements ACME spec bits needed for testing.
@@ -51,7 +45,6 @@ type CAServer struct {
 	certCount      int                       // number of issued certs
 	domainAddr     map[string]string         // domain name to addr:port resolution
 	authorizations map[string]*authorization // keyed by domain name
-	orders         []*order                  // index is used as order ID
 	errors         []error                   // encountered client errors
 }
 
@@ -90,7 +83,7 @@ func NewCAServer(challengeTypes []string, domainsWhitelist []string) *CAServer {
 		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
-		IsCA:                  true,
+		IsCA: true,
 	}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
 	if err != nil {
@@ -117,24 +110,11 @@ func (ca *CAServer) Close() {
 	ca.server.Close()
 }
 
-func (ca *CAServer) serverURL(format string, arg ...interface{}) string {
-	return ca.server.URL + fmt.Sprintf(format, arg...)
-}
-
-func (ca *CAServer) addr(domain string) (string, error) {
+// Errors returns all client errors.
+func (ca *CAServer) Errors() []error {
 	ca.mu.Lock()
 	defer ca.mu.Unlock()
-	addr, ok := ca.domainAddr[domain]
-	if !ok {
-		return "", fmt.Errorf("CAServer: no addr resolution for %q", domain)
-	}
-	return addr, nil
-}
-
-func (ca *CAServer) httpErrorf(w http.ResponseWriter, code int, format string, a ...interface{}) {
-	s := fmt.Sprintf(format, a...)
-	log.Println(s)
-	http.Error(w, s, code)
+	return ca.errors
 }
 
 // Resolve adds a domain to address resolution for the ca to dial to
@@ -146,10 +126,9 @@ func (ca *CAServer) Resolve(domain, addr string) {
 }
 
 type discovery struct {
-	NewNonce string `json:"newNonce"`
-	NewReg   string `json:"newAccount"`
-	NewOrder string `json:"newOrder"`
-	NewAuthz string `json:"newAuthz"`
+	NewReg   string `json:"new-reg"`
+	NewAuthz string `json:"new-authz"`
+	NewCert  string `json:"new-cert"`
 }
 
 type challenge struct {
@@ -162,117 +141,98 @@ type authorization struct {
 	Status     string      `json:"status"`
 	Challenges []challenge `json:"challenges"`
 
+	id     int
 	domain string
 }
 
-type order struct {
-	Status      string   `json:"status"`
-	AuthzURLs   []string `json:"authorizations"`
-	FinalizeURL string   `json:"finalize"`    // CSR submit URL
-	CertURL     string   `json:"certificate"` // already issued cert
-
-	leaf []byte // issued cert in DER format
-}
-
 func (ca *CAServer) handle(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%s %s", r.Method, r.URL)
 	w.Header().Set("Replay-Nonce", "nonce")
+	if r.Method == "HEAD" {
+		// a nonce request
+		return
+	}
+
 	// TODO: Verify nonce header for all POST requests.
 
 	switch {
 	default:
-		ca.httpErrorf(w, http.StatusBadRequest, "unrecognized r.URL.Path: %s", r.URL.Path)
+		err := fmt.Errorf("unrecognized r.URL.Path: %s", r.URL.Path)
+		ca.addError(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 
 	// Discovery request.
 	case r.URL.Path == "/":
 		resp := &discovery{
-			NewNonce: ca.serverURL("/new-nonce"),
 			NewReg:   ca.serverURL("/new-reg"),
-			NewOrder: ca.serverURL("/new-order"),
 			NewAuthz: ca.serverURL("/new-authz"),
+			NewCert:  ca.serverURL("/new-cert"),
 		}
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			panic(fmt.Sprintf("discovery response: %v", err))
 		}
 
-	// Nonce requests.
-	case r.URL.Path == "/new-nonce":
-		// Nonce values are always set. Nothing else to do.
-		return
-
 	// Client key registration request.
 	case r.URL.Path == "/new-reg":
 		// TODO: Check the user account key against a ca.accountKeys?
-		w.Header().Set("Location", ca.serverURL("/accounts/1"))
-		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte("{}"))
 
-	// New order request.
-	case r.URL.Path == "/new-order":
-		var req struct {
-			Identifiers []struct{ Value string }
-		}
-		if err := decodePayload(&req, r.Body); err != nil {
-			ca.httpErrorf(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		ca.mu.Lock()
-		defer ca.mu.Unlock()
-		o := &order{Status: acme.StatusPending}
-		for _, id := range req.Identifiers {
-			z := ca.authz(id.Value)
-			o.AuthzURLs = append(o.AuthzURLs, ca.serverURL("/authz/%s", z.domain))
-		}
-		orderID := len(ca.orders)
-		ca.orders = append(ca.orders, o)
-		w.Header().Set("Location", ca.serverURL("/orders/%d", orderID))
-		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(o); err != nil {
-			panic(err)
-		}
-
-	// Existing order status requests.
-	case strings.HasPrefix(r.URL.Path, "/orders/"):
-		ca.mu.Lock()
-		defer ca.mu.Unlock()
-		o, err := ca.storedOrder(strings.TrimPrefix(r.URL.Path, "/orders/"))
-		if err != nil {
-			ca.httpErrorf(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		if err := json.NewEncoder(w).Encode(o); err != nil {
-			panic(err)
-		}
-
-	// Identifier authorization request.
+	// Domain authorization request.
 	case r.URL.Path == "/new-authz":
 		var req struct {
 			Identifier struct{ Value string }
 		}
 		if err := decodePayload(&req, r.Body); err != nil {
-			ca.httpErrorf(w, http.StatusBadRequest, err.Error())
+			ca.addError(err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		ca.mu.Lock()
 		defer ca.mu.Unlock()
-		z := ca.authz(req.Identifier.Value)
-		w.Header().Set("Location", ca.serverURL("/authz/%s", z.domain))
+		authz, ok := ca.authorizations[req.Identifier.Value]
+		if !ok {
+			authz = &authorization{
+				domain: req.Identifier.Value,
+				Status: "pending",
+			}
+			for _, typ := range ca.challengeTypes {
+				authz.Challenges = append(authz.Challenges, challenge{
+					Type:  typ,
+					URI:   ca.serverURL("/challenge/%s/%s", typ, authz.domain),
+					Token: challengeToken(authz.domain, typ),
+				})
+			}
+			ca.authorizations[authz.domain] = authz
+		}
+		w.Header().Set("Location", ca.serverURL("/authz/%s", authz.domain))
 		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(z); err != nil {
+		if err := json.NewEncoder(w).Encode(authz); err != nil {
 			panic(fmt.Sprintf("new authz response: %v", err))
 		}
 
 	// Accept tls-alpn-01 challenge type requests.
+	// TODO: Add http-01 and dns-01 handlers.
 	case strings.HasPrefix(r.URL.Path, "/challenge/tls-alpn-01/"):
 		domain := strings.TrimPrefix(r.URL.Path, "/challenge/tls-alpn-01/")
 		ca.mu.Lock()
-		_, exist := ca.authorizations[domain]
-		ca.mu.Unlock()
-		if !exist {
-			ca.httpErrorf(w, http.StatusBadRequest, "challenge accept: no authz for %q", domain)
+		defer ca.mu.Unlock()
+		if _, ok := ca.authorizations[domain]; !ok {
+			err := fmt.Errorf("challenge accept: no authz for %q", domain)
+			ca.addError(err)
+			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		go ca.validateChallenge("tls-alpn-01", domain)
+		go func(domain string) {
+			err := ca.verifyALPNChallenge(domain)
+			ca.mu.Lock()
+			defer ca.mu.Unlock()
+			authz := ca.authorizations[domain]
+			if err != nil {
+				authz.Status = "invalid"
+				return
+			}
+			authz.Status = "valid"
+
+		}(domain)
 		w.Write([]byte("{}"))
 
 	// Get authorization status requests.
@@ -282,28 +242,15 @@ func (ca *CAServer) handle(w http.ResponseWriter, r *http.Request) {
 		defer ca.mu.Unlock()
 		authz, ok := ca.authorizations[domain]
 		if !ok {
-			ca.httpErrorf(w, http.StatusNotFound, "no authz for %q", domain)
+			http.Error(w, fmt.Sprintf("no authz for %q", domain), http.StatusNotFound)
 			return
 		}
 		if err := json.NewEncoder(w).Encode(authz); err != nil {
 			panic(fmt.Sprintf("get authz for %q response: %v", domain, err))
 		}
 
-	// Certificate issuance request.
-	case strings.HasPrefix(r.URL.Path, "/new-cert/"):
-		ca.mu.Lock()
-		defer ca.mu.Unlock()
-		orderID := strings.TrimPrefix(r.URL.Path, "/new-cert/")
-		o, err := ca.storedOrder(orderID)
-		if err != nil {
-			ca.httpErrorf(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		if o.Status != acme.StatusReady {
-			ca.httpErrorf(w, http.StatusForbidden, "order status: %s", o.Status)
-			return
-		}
-		// Validate CSR request.
+	// Cert issuance request.
+	case r.URL.Path == "/new-cert":
 		var req struct {
 			CSR string `json:"csr"`
 		}
@@ -311,52 +258,47 @@ func (ca *CAServer) handle(w http.ResponseWriter, r *http.Request) {
 		b, _ := base64.RawURLEncoding.DecodeString(req.CSR)
 		csr, err := x509.ParseCertificateRequest(b)
 		if err != nil {
-			ca.httpErrorf(w, http.StatusBadRequest, err.Error())
+			ca.addError(err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		names := unique(append(csr.DNSNames, csr.Subject.CommonName))
 		if err := ca.matchWhitelist(names); err != nil {
-			ca.httpErrorf(w, http.StatusUnauthorized, err.Error())
+			ca.addError(err)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
 		if err := ca.authorized(names); err != nil {
-			ca.httpErrorf(w, http.StatusUnauthorized, err.Error())
+			ca.addError(err)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
-		// Issue the certificate.
 		der, err := ca.leafCert(csr)
 		if err != nil {
-			ca.httpErrorf(w, http.StatusBadRequest, "new-cert response: ca.leafCert: %v", err)
-			return
+			err = fmt.Errorf("new-cert response: ca.leafCert: %v", err)
+			ca.addError(err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		o.leaf = der
-		o.CertURL = ca.serverURL("/issued-cert/%s", orderID)
-		o.Status = acme.StatusValid
-		if err := json.NewEncoder(w).Encode(o); err != nil {
-			panic(err)
-		}
+		w.Header().Set("Link", fmt.Sprintf("<%s>; rel=up", ca.serverURL("/ca-cert")))
+		w.WriteHeader(http.StatusCreated)
+		w.Write(der)
 
-	// Already issued cert download requests.
-	case strings.HasPrefix(r.URL.Path, "/issued-cert/"):
-		ca.mu.Lock()
-		defer ca.mu.Unlock()
-		o, err := ca.storedOrder(strings.TrimPrefix(r.URL.Path, "/issued-cert/"))
-		if err != nil {
-			ca.httpErrorf(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		if o.Status != acme.StatusValid {
-			ca.httpErrorf(w, http.StatusForbidden, "order status: %s", o.Status)
-			return
-		}
-		w.Header().Set("Content-Type", "application/pem-certificate-chain")
-		pem.Encode(w, &pem.Block{Type: "CERTIFICATE", Bytes: o.leaf})
-		pem.Encode(w, &pem.Block{Type: "CERTIFICATE", Bytes: ca.rootCert})
+	// CA chain cert request.
+	case r.URL.Path == "/ca-cert":
+		w.Write(ca.rootCert)
 	}
 }
 
-// matchWhitelist reports whether all dnsNames are whitelisted.
-// The whitelist is provided in NewCAServer.
+func (ca *CAServer) addError(err error) {
+	ca.mu.Lock()
+	defer ca.mu.Unlock()
+	ca.errors = append(ca.errors, err)
+}
+
+func (ca *CAServer) serverURL(format string, arg ...interface{}) string {
+	return ca.server.URL + fmt.Sprintf(format, arg...)
+}
+
 func (ca *CAServer) matchWhitelist(dnsNames []string) error {
 	if len(ca.domainsWhitelist) == 0 {
 		return nil
@@ -374,50 +316,13 @@ func (ca *CAServer) matchWhitelist(dnsNames []string) error {
 	return nil
 }
 
-// storedOrder retrieves a previously created order at index i.
-// It requires ca.mu to be locked.
-func (ca *CAServer) storedOrder(i string) (*order, error) {
-	idx, err := strconv.Atoi(i)
-	if err != nil {
-		return nil, fmt.Errorf("storedOrder: %v", err)
-	}
-	if idx < 0 {
-		return nil, fmt.Errorf("storedOrder: invalid order index %d", idx)
-	}
-	if idx > len(ca.orders)-1 {
-		return nil, fmt.Errorf("storedOrder: no such order %d", idx)
-	}
-	return ca.orders[idx], nil
-}
-
-// authz returns an existing authorization for the identifier or creates a new one.
-// It requires ca.mu to be locked.
-func (ca *CAServer) authz(identifier string) *authorization {
-	authz, ok := ca.authorizations[identifier]
-	if !ok {
-		authz = &authorization{
-			domain: identifier,
-			Status: acme.StatusPending,
-		}
-		for _, typ := range ca.challengeTypes {
-			authz.Challenges = append(authz.Challenges, challenge{
-				Type:  typ,
-				URI:   ca.serverURL("/challenge/%s/%s", typ, authz.domain),
-				Token: challengeToken(authz.domain, typ),
-			})
-		}
-		ca.authorizations[authz.domain] = authz
-	}
-	return authz
-}
-
-// authorized reports whether all authorizations for dnsNames have been satisfied.
-// It requires ca.mu to be locked.
 func (ca *CAServer) authorized(dnsNames []string) error {
+	ca.mu.Lock()
+	defer ca.mu.Unlock()
 	var noauthz []string
 	for _, name := range dnsNames {
 		authz, ok := ca.authorizations[name]
-		if !ok || authz.Status != acme.StatusValid {
+		if !ok || authz.Status != "valid" {
 			noauthz = append(noauthz, name)
 		}
 	}
@@ -427,9 +332,9 @@ func (ca *CAServer) authorized(dnsNames []string) error {
 	return nil
 }
 
-// leafCert issues a new certificate.
-// It requires ca.mu to be locked.
 func (ca *CAServer) leafCert(csr *x509.CertificateRequest) (der []byte, err error) {
+	ca.mu.Lock()
+	defer ca.mu.Unlock()
 	ca.certCount++ // next leaf cert serial number
 	leaf := &x509.Certificate{
 		SerialNumber:          big.NewInt(int64(ca.certCount)),
@@ -447,55 +352,14 @@ func (ca *CAServer) leafCert(csr *x509.CertificateRequest) (der []byte, err erro
 	return x509.CreateCertificate(rand.Reader, leaf, ca.rootTemplate, csr.PublicKey, ca.rootKey)
 }
 
-// TODO: Only tls-alpn-01 is currently supported: implement http-01 and dns-01.
-func (ca *CAServer) validateChallenge(typ, identifier string) {
-	var err error
-	switch typ {
-	case "tls-alpn-01":
-		err = ca.verifyALPNChallenge(identifier)
-	default:
-		panic(fmt.Sprintf("validation of %q is not implemented", typ))
-	}
+func (ca *CAServer) addr(domain string) (string, error) {
 	ca.mu.Lock()
 	defer ca.mu.Unlock()
-	authz := ca.authorizations[identifier]
-	if err != nil {
-		authz.Status = "invalid"
-	} else {
-		authz.Status = "valid"
+	addr, ok := ca.domainAddr[domain]
+	if !ok {
+		return "", fmt.Errorf("CAServer: no addr resolution for %q", domain)
 	}
-	log.Printf("validated %q for %q; authz status is now: %s", typ, identifier, authz.Status)
-	// Update all pending orders.
-	// An order becomes "ready" if all authorizations are "valid".
-	// An order becomes "invalid" if any authorization is "invalid".
-	// Status changes: https://tools.ietf.org/html/rfc8555#section-7.1.6
-OrdersLoop:
-	for i, o := range ca.orders {
-		if o.Status != acme.StatusPending {
-			continue
-		}
-		var countValid int
-		for _, zurl := range o.AuthzURLs {
-			z, ok := ca.authorizations[path.Base(zurl)]
-			if !ok {
-				log.Printf("no authz %q for order %d", zurl, i)
-				continue OrdersLoop
-			}
-			if z.Status == acme.StatusInvalid {
-				o.Status = acme.StatusInvalid
-				log.Printf("order %d is now invalid", i)
-				continue OrdersLoop
-			}
-			if z.Status == acme.StatusValid {
-				countValid++
-			}
-		}
-		if countValid == len(o.AuthzURLs) {
-			o.Status = acme.StatusReady
-			o.FinalizeURL = ca.serverURL("/new-cert/%d", i)
-			log.Printf("order %d is now ready", i)
-		}
-	}
+	return addr, nil
 }
 
 func (ca *CAServer) verifyALPNChallenge(domain string) error {

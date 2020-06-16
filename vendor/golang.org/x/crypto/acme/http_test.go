@@ -87,7 +87,7 @@ func TestPostWithRetries(t *testing.T) {
 			return
 		}
 
-		head, err := decodeJWSHead(r.Body)
+		head, err := decodeJWSHead(r)
 		switch {
 		case err != nil:
 			t.Errorf("decodeJWSHead: %v", err)

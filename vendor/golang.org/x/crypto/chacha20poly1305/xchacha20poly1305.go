@@ -6,13 +6,14 @@ package chacha20poly1305
 
 import (
 	"crypto/cipher"
+	"encoding/binary"
 	"errors"
 
-	"golang.org/x/crypto/chacha20"
+	"golang.org/x/crypto/internal/chacha20"
 )
 
 type xchacha20poly1305 struct {
-	key [KeySize]byte
+	key [8]uint32
 }
 
 // NewX returns a XChaCha20-Poly1305 AEAD that uses the given 256-bit key.
@@ -26,7 +27,14 @@ func NewX(key []byte) (cipher.AEAD, error) {
 		return nil, errors.New("chacha20poly1305: bad key length")
 	}
 	ret := new(xchacha20poly1305)
-	copy(ret.key[:], key)
+	ret.key[0] = binary.LittleEndian.Uint32(key[0:4])
+	ret.key[1] = binary.LittleEndian.Uint32(key[4:8])
+	ret.key[2] = binary.LittleEndian.Uint32(key[8:12])
+	ret.key[3] = binary.LittleEndian.Uint32(key[12:16])
+	ret.key[4] = binary.LittleEndian.Uint32(key[16:20])
+	ret.key[5] = binary.LittleEndian.Uint32(key[20:24])
+	ret.key[6] = binary.LittleEndian.Uint32(key[24:28])
+	ret.key[7] = binary.LittleEndian.Uint32(key[28:32])
 	return ret, nil
 }
 
@@ -52,10 +60,15 @@ func (x *xchacha20poly1305) Seal(dst, nonce, plaintext, additionalData []byte) [
 		panic("chacha20poly1305: plaintext too large")
 	}
 
-	c := new(chacha20poly1305)
-	hKey, _ := chacha20.HChaCha20(x.key[:], nonce[0:16])
-	copy(c.key[:], hKey)
-
+	hNonce := [4]uint32{
+		binary.LittleEndian.Uint32(nonce[0:4]),
+		binary.LittleEndian.Uint32(nonce[4:8]),
+		binary.LittleEndian.Uint32(nonce[8:12]),
+		binary.LittleEndian.Uint32(nonce[12:16]),
+	}
+	c := &chacha20poly1305{
+		key: chacha20.HChaCha20(&x.key, &hNonce),
+	}
 	// The first 4 bytes of the final nonce are unused counter space.
 	cNonce := make([]byte, NonceSize)
 	copy(cNonce[4:12], nonce[16:24])
@@ -74,10 +87,15 @@ func (x *xchacha20poly1305) Open(dst, nonce, ciphertext, additionalData []byte) 
 		panic("chacha20poly1305: ciphertext too large")
 	}
 
-	c := new(chacha20poly1305)
-	hKey, _ := chacha20.HChaCha20(x.key[:], nonce[0:16])
-	copy(c.key[:], hKey)
-
+	hNonce := [4]uint32{
+		binary.LittleEndian.Uint32(nonce[0:4]),
+		binary.LittleEndian.Uint32(nonce[4:8]),
+		binary.LittleEndian.Uint32(nonce[8:12]),
+		binary.LittleEndian.Uint32(nonce[12:16]),
+	}
+	c := &chacha20poly1305{
+		key: chacha20.HChaCha20(&x.key, &hNonce),
+	}
 	// The first 4 bytes of the final nonce are unused counter space.
 	cNonce := make([]byte, NonceSize)
 	copy(cNonce[4:12], nonce[16:24])

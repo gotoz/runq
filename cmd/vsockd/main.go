@@ -17,10 +17,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/creack/pty"
 	"github.com/gotoz/runq/pkg/util"
 	"github.com/gotoz/runq/pkg/vm"
 	"github.com/gotoz/runq/pkg/vs"
-	"github.com/kr/pty"
 	"github.com/mdlayher/vsock"
 	"github.com/pkg/errors"
 )

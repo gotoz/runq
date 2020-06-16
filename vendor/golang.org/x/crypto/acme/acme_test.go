@@ -16,7 +16,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -27,22 +26,12 @@ import (
 	"time"
 )
 
-// newTestClient creates a client with a non-nil Directory so that it skips
-// the discovery which is otherwise done on the first call of almost every
-// exported method.
-func newTestClient() *Client {
-	return &Client{
-		Key: testKeyEC,
-		dir: &Directory{}, // skip discovery
-	}
-}
-
 // Decodes a JWS-encoded request and unmarshals the decoded JSON into a provided
 // interface.
-func decodeJWSRequest(t *testing.T, v interface{}, r io.Reader) {
+func decodeJWSRequest(t *testing.T, v interface{}, r *http.Request) {
 	// Decode request
 	var req struct{ Payload string }
-	if err := json.NewDecoder(r).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		t.Fatal(err)
 	}
 	payload, err := base64.RawURLEncoding.DecodeString(req.Payload)
@@ -58,14 +47,12 @@ func decodeJWSRequest(t *testing.T, v interface{}, r io.Reader) {
 type jwsHead struct {
 	Alg   string
 	Nonce string
-	URL   string            `json:"url"`
-	KID   string            `json:"kid"`
 	JWK   map[string]string `json:"jwk"`
 }
 
-func decodeJWSHead(r io.Reader) (*jwsHead, error) {
+func decodeJWSHead(r *http.Request) (*jwsHead, error) {
 	var req struct{ Protected string }
-	if err := json.NewDecoder(r).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, err
 	}
 	b, err := base64.RawURLEncoding.DecodeString(req.Protected)
@@ -136,7 +123,7 @@ func TestRegister(t *testing.T) {
 			Contact   []string
 			Agreement string
 		}
-		decodeJWSRequest(t, &j, r.Body)
+		decodeJWSRequest(t, &j, r)
 
 		// Test request
 		if j.Resource != "new-reg" {
@@ -206,7 +193,7 @@ func TestUpdateReg(t *testing.T) {
 			Contact   []string
 			Agreement string
 		}
-		decodeJWSRequest(t, &j, r.Body)
+		decodeJWSRequest(t, &j, r)
 
 		// Test request
 		if j.Resource != "reg" {
@@ -228,11 +215,7 @@ func TestUpdateReg(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c := Client{
-		Key:          testKeyEC,
-		DirectoryURL: ts.URL,       // don't dial outside of localhost
-		dir:          &Directory{}, // don't do discovery
-	}
+	c := Client{Key: testKeyEC}
 	a := &Account{URI: ts.URL, Contact: contacts, AgreedTerms: terms}
 	var err error
 	if a, err = c.UpdateReg(context.Background(), a); err != nil {
@@ -271,7 +254,7 @@ func TestGetReg(t *testing.T) {
 			Contact   []string
 			Agreement string
 		}
-		decodeJWSRequest(t, &j, r.Body)
+		decodeJWSRequest(t, &j, r)
 
 		// Test request
 		if j.Resource != "reg" {
@@ -293,11 +276,7 @@ func TestGetReg(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	c := Client{
-		Key:          testKeyEC,
-		DirectoryURL: ts.URL,       // don't dial outside of localhost
-		dir:          &Directory{}, // don't do discovery
-	}
+	c := Client{Key: testKeyEC}
 	a, err := c.GetReg(context.Background(), ts.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -339,7 +318,7 @@ func TestAuthorize(t *testing.T) {
 						Value string
 					}
 				}
-				decodeJWSRequest(t, &j, r.Body)
+				decodeJWSRequest(t, &j, r)
 
 				// Test request
 				if j.Resource != "new-authz" {
@@ -494,7 +473,7 @@ func TestGetAuthorization(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	cl := Client{Key: testKeyEC, DirectoryURL: ts.URL}
+	cl := Client{Key: testKeyEC}
 	auth, err := cl.GetAuthorization(context.Background(), ts.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -624,7 +603,7 @@ func runWaitAuthorization(ctx context.Context, t *testing.T, h http.HandlerFunc)
 	}
 	ch := make(chan res, 1)
 	go func() {
-		var client = Client{DirectoryURL: ts.URL}
+		var client Client
 		a, err := client.WaitAuthorization(ctx, ts.URL)
 		ch <- res{a, err}
 	}()
@@ -650,7 +629,7 @@ func TestRevokeAuthorization(t *testing.T) {
 				Status   string
 				Delete   bool
 			}
-			decodeJWSRequest(t, &req, r.Body)
+			decodeJWSRequest(t, &req, r)
 			if req.Resource != "authz" {
 				t.Errorf("req.Resource = %q; want authz", req.Resource)
 			}
@@ -665,11 +644,7 @@ func TestRevokeAuthorization(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
-	client := &Client{
-		Key:          testKey,
-		DirectoryURL: ts.URL,       // don't dial outside of localhost
-		dir:          &Directory{}, // don't do discovery
-	}
+	client := &Client{Key: testKey}
 	ctx := context.Background()
 	if err := client.RevokeAuthorization(ctx, ts.URL+"/1"); err != nil {
 		t.Errorf("err = %v", err)
@@ -694,7 +669,7 @@ func TestPollChallenge(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	cl := Client{Key: testKeyEC, DirectoryURL: ts.URL}
+	cl := Client{Key: testKeyEC}
 	chall, err := cl.GetChallenge(context.Background(), ts.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -729,7 +704,7 @@ func TestAcceptChallenge(t *testing.T) {
 			Type     string
 			Auth     string `json:"keyAuthorization"`
 		}
-		decodeJWSRequest(t, &j, r.Body)
+		decodeJWSRequest(t, &j, r)
 
 		// Test request
 		if j.Resource != "challenge" {
@@ -755,11 +730,7 @@ func TestAcceptChallenge(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	cl := Client{
-		Key:          testKeyEC,
-		DirectoryURL: ts.URL,       // don't dial outside of localhost
-		dir:          &Directory{}, // don't do discovery
-	}
+	cl := Client{Key: testKeyEC}
 	c, err := cl.Accept(context.Background(), &Challenge{
 		URI:   ts.URL,
 		Token: "token1",
@@ -800,7 +771,7 @@ func TestNewCert(t *testing.T) {
 			NotBefore string `json:"notBefore,omitempty"`
 			NotAfter  string `json:"notAfter,omitempty"`
 		}
-		decodeJWSRequest(t, &j, r.Body)
+		decodeJWSRequest(t, &j, r)
 
 		// Test request
 		if j.Resource != "new-cert" {
@@ -875,8 +846,7 @@ func TestFetchCert(t *testing.T) {
 		w.Write([]byte{count})
 	}))
 	defer ts.Close()
-	cl := newTestClient()
-	res, err := cl.FetchCert(context.Background(), ts.URL, true)
+	res, err := (&Client{}).FetchCert(context.Background(), ts.URL, true)
 	if err != nil {
 		t.Fatalf("FetchCert: %v", err)
 	}
@@ -898,8 +868,7 @@ func TestFetchCertRetry(t *testing.T) {
 		w.Write([]byte{1})
 	}))
 	defer ts.Close()
-	cl := newTestClient()
-	res, err := cl.FetchCert(context.Background(), ts.URL, false)
+	res, err := (&Client{}).FetchCert(context.Background(), ts.URL, false)
 	if err != nil {
 		t.Fatalf("FetchCert: %v", err)
 	}
@@ -912,15 +881,14 @@ func TestFetchCertRetry(t *testing.T) {
 func TestFetchCertCancel(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Retry-After", "0")
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusAccepted)
 	}))
 	defer ts.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	var err error
 	go func() {
-		cl := newTestClient()
-		_, err = cl.FetchCert(ctx, ts.URL, false)
+		_, err = (&Client{}).FetchCert(ctx, ts.URL, false)
 		close(done)
 	}()
 	cancel()
@@ -943,8 +911,7 @@ func TestFetchCertDepth(t *testing.T) {
 		w.Write([]byte{count})
 	}))
 	defer ts.Close()
-	cl := newTestClient()
-	_, err := cl.FetchCert(context.Background(), ts.URL, true)
+	_, err := (&Client{}).FetchCert(context.Background(), ts.URL, true)
 	if err == nil {
 		t.Errorf("err is nil")
 	}
@@ -959,8 +926,7 @@ func TestFetchCertBreadth(t *testing.T) {
 		w.Write([]byte{1})
 	}))
 	defer ts.Close()
-	cl := newTestClient()
-	_, err := cl.FetchCert(context.Background(), ts.URL, true)
+	_, err := (&Client{}).FetchCert(context.Background(), ts.URL, true)
 	if err == nil {
 		t.Errorf("err is nil")
 	}
@@ -972,8 +938,7 @@ func TestFetchCertSize(t *testing.T) {
 		w.Write(b)
 	}))
 	defer ts.Close()
-	cl := newTestClient()
-	_, err := cl.FetchCert(context.Background(), ts.URL, false)
+	_, err := (&Client{}).FetchCert(context.Background(), ts.URL, false)
 	if err == nil {
 		t.Errorf("err is nil")
 	}
@@ -991,7 +956,7 @@ func TestRevokeCert(t *testing.T) {
 			Certificate string
 			Reason      int
 		}
-		decodeJWSRequest(t, &req, r.Body)
+		decodeJWSRequest(t, &req, r)
 		if req.Resource != "revoke-cert" {
 			t.Errorf("req.Resource = %q; want revoke-cert", req.Resource)
 		}
@@ -1058,7 +1023,7 @@ func TestNonce_fetch(t *testing.T) {
 	defer ts.Close()
 	for ; i < len(tests); i++ {
 		test := tests[i]
-		c := newTestClient()
+		c := &Client{}
 		n, err := c.fetchNonce(context.Background(), ts.URL)
 		if n != test.nonce {
 			t.Errorf("%d: n=%q; want %q", i, n, test.nonce)
@@ -1077,7 +1042,7 @@ func TestNonce_fetchError(t *testing.T) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	}))
 	defer ts.Close()
-	c := newTestClient()
+	c := &Client{}
 	_, err := c.fetchNonce(context.Background(), ts.URL)
 	e, ok := err.(*Error)
 	if !ok {
@@ -1152,7 +1117,7 @@ func TestNonce_postJWS(t *testing.T) {
 			w.Write([]byte(`{"status":"valid"}`))
 		}()
 
-		head, err := decodeJWSHead(r.Body)
+		head, err := decodeJWSHead(r)
 		if err != nil {
 			t.Errorf("decodeJWSHead: %v", err)
 			return
@@ -1224,7 +1189,8 @@ func TestTLSSNI01ChallengeCert(t *testing.T) {
 		san = "dbbd5eefe7b4d06eb9d1d9f5acb4c7cd.a27d320e4b30332f0b6cb441734ad7b0.acme.invalid"
 	)
 
-	tlscert, name, err := newTestClient().TLSSNI01ChallengeCert(token)
+	client := &Client{Key: testKeyEC}
+	tlscert, name, err := client.TLSSNI01ChallengeCert(token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1256,7 +1222,8 @@ func TestTLSSNI02ChallengeCert(t *testing.T) {
 		sanB = "dbbd5eefe7b4d06eb9d1d9f5acb4c7cd.a27d320e4b30332f0b6cb441734ad7b0.ka.acme.invalid"
 	)
 
-	tlscert, name, err := newTestClient().TLSSNI02ChallengeCert(token)
+	client := &Client{Key: testKeyEC}
+	tlscert, name, err := client.TLSSNI02ChallengeCert(token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1296,7 +1263,8 @@ func TestTLSALPN01ChallengeCert(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tlscert, err := newTestClient().TLSALPN01ChallengeCert(token, domain)
+	client := &Client{Key: testKeyEC}
+	tlscert, err := client.TLSALPN01ChallengeCert(token, domain)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1345,7 +1313,7 @@ func TestTLSChallengeCertOpt(t *testing.T) {
 	}
 	opts := []CertOption{WithKey(key), WithTemplate(tmpl)}
 
-	client := newTestClient()
+	client := &Client{Key: testKeyEC}
 	cert1, _, err := client.TLSSNI01ChallengeCert("token", opts...)
 	if err != nil {
 		t.Fatal(err)
@@ -1403,7 +1371,7 @@ func TestHTTP01Challenge(t *testing.T) {
 		value   = token + "." + testKeyECThumbprint
 		urlpath = "/.well-known/acme-challenge/" + token
 	)
-	client := newTestClient()
+	client := &Client{Key: testKeyEC}
 	val, err := client.HTTP01ChallengeResponse(token)
 	if err != nil {
 		t.Fatal(err)
@@ -1422,7 +1390,8 @@ func TestDNS01ChallengeRecord(t *testing.T) {
 	//      base64 | tr -d '=' | tr '/+' '_-'
 	const value = "8DERMexQ5VcdJ_prpPiA0mVdp7imgbCgjsG4SqqNMIo"
 
-	val, err := newTestClient().DNS01ChallengeRecord("xxx")
+	client := &Client{Key: testKeyEC}
+	val, err := client.DNS01ChallengeRecord("xxx")
 	if err != nil {
 		t.Fatal(err)
 	}

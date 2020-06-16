@@ -2,20 +2,12 @@
 
 
 [[projects]]
-  digest = "1:385dff5bf83bf1c9d40ef2b0f2e697f0d1973fc9e24ae9401cf41698612bbebc"
+  digest = "1:376409c05d9e563e19815109c2b13776eb4e2529cbb006bae2d32a99877a6839"
   name = "github.com/creack/pty"
   packages = ["."]
   pruneopts = ""
-  revision = "2769f65a3a94eb8f876f44a0459d24ae7ad2e488"
-  version = "v1.1.7"
-
-[[projects]]
-  digest = "1:3e2fbf3f6d30c4c009be006f9d2a9eaefc804d8f6b991e88cb793b87318cc5bc"
-  name = "github.com/kr/pty"
-  packages = ["."]
-  pruneopts = ""
-  revision = "24b51915630e1d9d3c6adf15a3a96796bbc3cd43"
-  version = "v1.1.8"
+  revision = "2a38352e8b4d7ab6c336eef107e42a55e72e7fbc"
+  version = "v1.1.11"
 
 [[projects]]
   digest = "1:7937d478555f270b514fa036cc499a1c19409f04ce0a8e92ab35b0f1ad0cfada"
@@ -104,7 +96,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/kr/pty",
+    "github.com/creack/pty",
     "github.com/mdlayher/vsock",
     "github.com/opencontainers/runtime-spec/specs-go",
     "github.com/pkg/errors",

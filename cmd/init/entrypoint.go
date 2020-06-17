@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/gotoz/runq/pkg/vm"
 	"github.com/pkg/errors"
@@ -172,8 +173,8 @@ func prepareDeviceFiles(uid int) error {
 	}
 	return nil
 }
-func setRlimits(limits map[string]vm.Rlimit) error {
-	merged := make(map[string]vm.Rlimit)
+func setRlimits(limits map[string]syscall.Rlimit) error {
+	merged := make(map[string]syscall.Rlimit)
 	for k, v := range vm.Rlimits {
 		merged[k] = v
 	}
@@ -185,7 +186,7 @@ func setRlimits(limits map[string]vm.Rlimit) error {
 		if !ok {
 			return fmt.Errorf("invalid rlimit type: %s", k)
 		}
-		if err := unix.Setrlimit(t, &unix.Rlimit{Cur: v.Soft, Max: v.Hard}); err != nil {
+		if err := syscall.Setrlimit(t, &syscall.Rlimit{Cur: v.Cur, Max: v.Max}); err != nil {
 			return errors.WithStack(err)
 		}
 	}

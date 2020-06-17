@@ -65,7 +65,7 @@ index 072447d1..09ba3ec8 100644
  		checkpointCommand,
 diff --git a/runq.go b/runq.go
 new file mode 100644
-index 00000000..47f64553
+index 00000000..e35be936
 --- /dev/null
 +++ b/runq.go
 @@ -0,0 +1,561 @@
@@ -219,9 +219,9 @@ index 00000000..47f64553
 +		spec.Linux.Seccomp = nil
 +	}
 +
-+	vmdata.Entrypoint.Rlimits = make(map[string]vm.Rlimit)
++	vmdata.Entrypoint.Rlimits = make(map[string]syscall.Rlimit)
 +	for _, v := range spec.Process.Rlimits {
-+		vmdata.Entrypoint.Rlimits[v.Type] = vm.Rlimit{Hard: v.Hard, Soft: v.Soft}
++		vmdata.Entrypoint.Rlimits[v.Type] = syscall.Rlimit{Max: v.Hard, Cur: v.Soft}
 +	}
 +	spec.Process.Rlimits = nil
 +

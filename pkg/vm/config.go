@@ -37,10 +37,10 @@ var SysctlOverride = map[string]string{
 }
 
 // Rlimits defines process settings.
-var Rlimits = map[string]Rlimit{
-	"RLIMIT_NOFILE":     {Hard: 65536, Soft: 65536},
-	"RLIMIT_NPROC":      {Hard: unix.RLIM_INFINITY, Soft: unix.RLIM_INFINITY},
-	"RLIMIT_SIGPENDING": {Hard: 65536, Soft: 65536},
+var Rlimits = map[string]syscall.Rlimit{
+	"RLIMIT_NOFILE":     {Max: 65536, Cur: 65536},
+	"RLIMIT_NPROC":      {Max: unix.RLIM_INFINITY, Cur: unix.RLIM_INFINITY},
+	"RLIMIT_SIGPENDING": {Max: 65536, Cur: 65536},
 }
 
 // Signals that proxy catches and forwards to init.

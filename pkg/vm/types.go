@@ -9,6 +9,7 @@ import (
 	"encoding/gob"
 	"io/ioutil"
 	"net"
+	"syscall"
 
 	"github.com/vishvananda/netlink"
 )
@@ -40,12 +41,6 @@ const (
 	Qcow2Image                      // Qcow2 image
 	RawFile                         // regular file used as block device
 )
-
-// Rlimit details
-type Rlimit struct {
-	Hard uint64
-	Soft uint64
-}
 
 // AppCapabilities defines whitelists of Linux capabilities
 // for the target application.
@@ -112,7 +107,7 @@ type Entrypoint struct {
 	DockerInit      string
 	Env             []string
 	NoNewPrivileges bool
-	Rlimits         map[string]Rlimit
+	Rlimits         map[string]syscall.Rlimit
 	Runqenv         bool
 	SeccompGob      []byte
 	Systemd         bool

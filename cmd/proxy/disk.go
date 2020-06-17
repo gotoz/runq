@@ -10,12 +10,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gotoz/runq/pkg/loopback"
-	"github.com/gotoz/runq/pkg/util"
+	"github.com/gotoz/runq/internal/loopback"
+	"github.com/gotoz/runq/internal/util"
 	"github.com/gotoz/runq/pkg/vm"
-	"golang.org/x/sys/unix"
-
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
 // disktype detects the type of a disk at the given path

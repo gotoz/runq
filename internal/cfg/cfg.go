@@ -1,4 +1,4 @@
-package vm
+package cfg
 
 import (
 	"os"

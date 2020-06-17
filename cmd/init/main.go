@@ -14,7 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gotoz/runq/pkg/util"
+	"github.com/gotoz/runq/internal/cfg"
+	"github.com/gotoz/runq/internal/util"
 	"github.com/gotoz/runq/pkg/vm"
 
 	"github.com/pkg/errors"
@@ -318,7 +319,7 @@ func loadKernelModules(kind, prefix string) error {
 }
 
 func setSysctl(vmdataSysctl map[string]string) error {
-	for k, v := range vm.SysctlDefault {
+	for k, v := range cfg.SysctlDefault {
 		if err := util.SetSysctl(k, v); err != nil {
 			return err
 		}
@@ -328,7 +329,7 @@ func setSysctl(vmdataSysctl map[string]string) error {
 			return err
 		}
 	}
-	for k, v := range vm.SysctlOverride {
+	for k, v := range cfg.SysctlOverride {
 		if err := util.SetSysctl(k, v); err != nil {
 			return err
 		}

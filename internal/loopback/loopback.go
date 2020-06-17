@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gotoz/runq/pkg/util"
+	"github.com/gotoz/runq/internal/util"
 	"golang.org/x/sys/unix"
 )
 

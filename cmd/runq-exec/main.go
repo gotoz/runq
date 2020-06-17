@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gotoz/runq/pkg/vs"
+	"github.com/gotoz/runq/internal/vs"
 	"github.com/mdlayher/vsock"
 	flag "github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh/terminal"

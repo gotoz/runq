@@ -17,13 +17,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"golang.org/x/sys/unix"
 
-	"github.com/gotoz/runq/pkg/util"
+	"github.com/gotoz/runq/internal/cfg"
+	"github.com/gotoz/runq/internal/util"
+	"github.com/gotoz/runq/internal/vs"
 	"github.com/gotoz/runq/pkg/vm"
-	"github.com/gotoz/runq/pkg/vs"
+	"github.com/pkg/errors"
 )
 
 var gitCommit string // set via Makefile
@@ -186,7 +186,7 @@ func run(vmdataB64 string) (int, error) {
 	}
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, vm.Signals...)
+	signal.Notify(sigChan, cfg.Signals...)
 	go func() {
 		for {
 			sig := <-sigChan
@@ -240,7 +240,7 @@ func completeVmdata(vmdata *vm.Data) error {
 			return fmt.Errorf("invalid value for memory: %s", v)
 		}
 	}
-	if vmdata.Mem < vm.MinMem {
+	if vmdata.Mem < cfg.MinMem {
 		return fmt.Errorf("invalid value for memory: %d", vmdata.Mem)
 	}
 

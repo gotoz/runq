@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/gotoz/runq/pkg/util"
+	"github.com/gotoz/runq/internal/util"
+	"github.com/gotoz/runq/internal/vs"
 	"github.com/gotoz/runq/pkg/vm"
-	"github.com/gotoz/runq/pkg/vs"
 	"github.com/mdlayher/vsock"
 	"github.com/pkg/errors"
 )

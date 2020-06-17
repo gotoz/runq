@@ -7,7 +7,6 @@ import (
 	"net"
 
 	"github.com/gotoz/runq/pkg/vm"
-
 	"github.com/pkg/errors"
 )
 

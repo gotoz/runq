@@ -4,14 +4,14 @@ import (
 	"log"
 	"time"
 
-	"github.com/gotoz/runq/pkg/vm"
+	"github.com/gotoz/runq/internal/cfg"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
 func reaper() {
 	for {
-		<-time.After(vm.ReaperInterval)
+		<-time.After(cfg.ReaperInterval)
 		for {
 			wpid, err := unix.Wait4(-1, nil, unix.WNOHANG, nil)
 			if err != nil {

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/gotoz/runq/internal/cfg"
 	"github.com/gotoz/runq/pkg/vm"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
@@ -58,7 +59,7 @@ func runEntrypoint() error {
 	}
 
 	if entrypoint.Runqenv {
-		if err := writeEnvfile(vm.Envfile, entrypoint.Env); err != nil {
+		if err := writeEnvfile(cfg.Envfile, entrypoint.Env); err != nil {
 			return err
 		}
 	}
@@ -69,11 +70,11 @@ func runEntrypoint() error {
 		}
 	}
 
-	if err := maskPath(vm.MaskedPaths); err != nil {
+	if err := maskPath(cfg.MaskedPaths); err != nil {
 		return err
 	}
 
-	if err := readonlyPath(vm.ReadonlyPaths); err != nil {
+	if err := readonlyPath(cfg.ReadonlyPaths); err != nil {
 		return err
 	}
 
@@ -175,14 +176,14 @@ func prepareDeviceFiles(uid int) error {
 }
 func setRlimits(limits map[string]syscall.Rlimit) error {
 	merged := make(map[string]syscall.Rlimit)
-	for k, v := range vm.Rlimits {
+	for k, v := range cfg.Rlimits {
 		merged[k] = v
 	}
 	for k, v := range limits {
 		merged[k] = v
 	}
 	for k, v := range merged {
-		t, ok := vm.RlimitsMap[k]
+		t, ok := cfg.RlimitsMap[k]
 		if !ok {
 			return fmt.Errorf("invalid rlimit type: %s", k)
 		}

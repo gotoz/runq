@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gotoz/runq/pkg/util"
+	"github.com/gotoz/runq/internal/util"
 	"github.com/gotoz/runq/pkg/vm"
 
 	"github.com/pkg/errors"

@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strconv"
 
+	"github.com/gotoz/runq/internal/cfg"
 	"github.com/gotoz/runq/pkg/vm"
 )
 
@@ -64,7 +65,7 @@ func qemuConfig(vmdata *vm.Data, socket, share string) ([]string, error) {
 		"-device", "virtserialport,chardev=channel1,name=com.ibm.runq.channel.1",
 		"-smp", strconv.Itoa(vmdata.CPU),
 		"-m", strconv.Itoa(vmdata.Mem),
-		"-append", vm.KernelParameters,
+		"-append", cfg.KernelParameters,
 		"-chardev", "stdio,id=console,signal=off",
 	)
 

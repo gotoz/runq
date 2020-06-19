@@ -411,7 +411,7 @@ device from the host through Qemu into the runq VM guest. VFIO mediated devices 
 docker run --runtime runq -e RUNQ_APUUID=b34543ee-496b-4769-8312-83707033e1de ...
 ```
 For details on how to setup mediated devices on the host see
-https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/s390/vfio-ap.txt
+https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/s390/vfio-ap.rst
 
 ## Limitations
 Most docker commands and options work as expected. However, due to

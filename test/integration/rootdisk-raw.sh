@@ -27,16 +27,16 @@ docker run \
     $image sleep 100
 
 sleep 2
-/var/lib/runq/runq-exec $name sh -c "grep '^/dev/vda / ext4' /proc/mounts"
+$runq_exec $name sh -c "grep '^/dev/vda / ext4' /proc/mounts"
 checkrc $? 0  "rootfs is on block device"
 
-/var/lib/runq/runq-exec $name sh -c "ls -d /media"
+$runq_exec $name sh -c "ls -d /media"
 checkrc $? 1 "directory has been excluded"
 
-/var/lib/runq/runq-exec $name sh -c "echo foobar > /etc/passwd"
+$runq_exec $name sh -c "echo foobar > /etc/passwd"
 checkrc $? 0 "update file"
 
-/var/lib/runq/runq-exec $name sh -c "grep foobar /etc/passwd"
+$runq_exec $name sh -c "grep foobar /etc/passwd"
 checkrc $? 0 "updated file is correct"
 
 docker stop $name
@@ -46,6 +46,6 @@ docker start $name
 checkrc $? 0 "container has been re-started"
 sleep 2
 
-/var/lib/runq/runq-exec $name sh -c "grep foobar /etc/passwd"
+$runq_exec $name sh -c "grep foobar /etc/passwd"
 checkrc 0 0 "content of /etc/passwd is correct"
 

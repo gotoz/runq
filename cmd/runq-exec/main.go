@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -20,12 +21,10 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-const (
-	tlsCertDefault = "/var/lib/runq/cert.pem"
-	tlsKeyDefault  = "/var/lib/runq/key.pem"
-)
-
 var (
+	tlsCertDefault = filepath.Join(filepath.Dir(os.Args[0]), "cert.pem")
+	tlsKeyDefault  = filepath.Join(filepath.Dir(os.Args[0]), "key.pem")
+
 	env     = flag.StringArrayP("env", "e", nil, "Set environment variables for command")
 	help    = flag.BoolP("help", "h", false, "Print this help")
 	stdin   = flag.BoolP("interactive", "i", false, "Keep STDIN open even if not attached")

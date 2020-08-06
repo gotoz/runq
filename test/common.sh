@@ -1,5 +1,10 @@
 # vim:ft=sh
 
+if [ -z "$RUNQ_ROOT" ]; then
+    RUNQ_ROOT=/var/lib/runq
+fi
+runq_exec=$RUNQ_ROOT/runq-exec
+
 image=alpine
 rc_exit=0
 

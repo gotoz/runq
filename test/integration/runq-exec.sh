@@ -1,7 +1,6 @@
 #!/bin/bash
 . $(cd ${0%/*};pwd;)/../common.sh
 
-runq_exec=/var/lib/runq/runq-exec
 tmpfile=$(mktemp)
 name=$(rand_name)
 
@@ -93,10 +92,10 @@ checkrc $n $r "run $n exec commands simultaneously"
 #
 # check cli cert parameters
 #
-$runq_exec --tlscert /var/lib/runq/cert.pem --tlskey /var/lib/runq/key.pem $name true
+$runq_exec --tlscert $RUNQ_ROOT/cert.pem --tlskey $RUNQ_ROOT/key.pem $name true
 checkrc $? 0 "valid custom cert file"
 
-$runq_exec --tlscert /var/lib/runq/key.pem --tlskey /var/lib/runq/cert.pem $name true
+$runq_exec --tlscert $RUNQ_ROOT/key.pem --tlskey $RUNQ_ROOT/cert.pem $name true
 checkrc $? 1 "invalid custom cert file"
 
 #

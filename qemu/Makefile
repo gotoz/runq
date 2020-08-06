@@ -4,7 +4,7 @@ all: image qemu.tar
 
 image:
 	cd $(ARCH) && \
-	docker build -t runq-build .
+	docker build -t runq-build --build-arg QEMU_ROOT=$(QEMU_ROOT) .
 
 qemu.tar:
 	docker run --rm runq-build tar -C $(QEMU_ROOT) -cf - .  > qemu.tar

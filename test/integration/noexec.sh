@@ -4,7 +4,6 @@
 docker info --format {{.Runtimes.runq.Args}} | grep -F -- --noexec
 test $? -eq 0 || skip "reason: --noexec is not configured"
 
-runq_exec=/var/lib/runq/runq-exec
 name=$(rand_name)
 
 cleanup() {

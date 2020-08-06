@@ -65,10 +65,10 @@ index 072447d1..09ba3ec8 100644
  		checkpointCommand,
 diff --git a/runq.go b/runq.go
 new file mode 100644
-index 00000000..ef880590
+index 00000000..47f64553
 --- /dev/null
 +++ b/runq.go
-@@ -0,0 +1,562 @@
+@@ -0,0 +1,561 @@
 +package main
 +
 +import (
@@ -93,7 +93,6 @@ index 00000000..ef880590
 +
 +const (
 +	runqOciVersion  = "1.0"
-+	runqQemuRoot    = "/var/lib/runq/qemu"
 +	runqStartcmd    = "/qemu/proxy"
 +	runqQemuMountPt = "/qemu"
 +)
@@ -493,7 +492,7 @@ index 00000000..ef880590
 +	mounts = append(mounts, specs.Mount{
 +		Destination: runqQemuMountPt,
 +		Type:        "bind",
-+		Source:      runqQemuRoot,
++		Source:      filepath.Join(filepath.Dir(os.Args[0]), "qemu"),
 +		Options:     []string{"rbind", "nosuid", "nodev", "ro", "rprivate"},
 +	})
 +

@@ -1,8 +1,8 @@
 FROM ubuntu:18.04
 
+ARG QEMU_ROOT
 ENV DEBIAN_FRONTEND noninteractive
 ENV GOPATH /go
-ENV QEMU_ROOT /var/lib/runq/qemu
 
 WORKDIR /go/src/github.com/gotoz/runq
 

@@ -2,14 +2,17 @@
 # Create TLS server certificates in $QEMU_ROOT/certs and corresponding client
 # certificates in $RUNQ_ROOT. Existing certificates will be overwritten.
 
+DIR=$(cd ${0%/*};pwd;)
+if [ -z "$RUNQ_ROOT" ]; then
+    RUNQ_ROOT=$(readlink -f $DIR/..)
+fi
+
 set -e
 set -u
 
 PASSPHRASE=`cat /proc/sys/kernel/random/uuid`
 DAYS=3650
 SUBJ="/emailAddress=ignore@example.com"
-
-RUNQ_ROOT=${RUNQ_ROOT:-/var/lib/runq}
 QEMU_ROOT=${QEMU_ROOT:-$RUNQ_ROOT/qemu}
 
 TMPDIR=$(mktemp -d)

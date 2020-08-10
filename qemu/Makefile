@@ -4,10 +4,10 @@ all: image qemu.tar
 
 image:
 	cd $(ARCH) && \
-	docker build -t runq-build --build-arg QEMU_ROOT=$(QEMU_ROOT) .
+	docker build -t $(BUILD_IMAGE) --build-arg QEMU_ROOT=$(QEMU_ROOT) .
 
 qemu.tar:
-	docker run --rm runq-build tar -C $(QEMU_ROOT) -cf - .  > qemu.tar
+	docker run --rm $(BUILD_IMAGE) tar -C $(QEMU_ROOT) -cf - .  > qemu.tar
 
 install: qemu.tar
 	rm -rf $(QEMU_ROOT)
@@ -20,4 +20,4 @@ clean:
 	-rm -f qemu.tar
 
 distclean: clean
-	docker rmi -f runq-build; echo
+	docker rmi -f $(BUILD_IMAGE); echo

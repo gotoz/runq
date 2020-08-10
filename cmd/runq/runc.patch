@@ -1,5 +1,5 @@
 diff --git a/exec.go b/exec.go
-index 7fc04402..fe6de172 100644
+index 6053ea97..ee6fdfdc 100644
 --- a/exec.go
 +++ b/exec.go
 @@ -95,6 +95,7 @@ following will output a list of processes running in the container:
@@ -10,11 +10,42 @@ index 7fc04402..fe6de172 100644
  		if err := checkArgs(context, 1, minArgs); err != nil {
  			return err
  		}
+diff --git a/go.mod b/go.mod
+index fcf068df..196f2a47 100644
+--- a/go.mod
++++ b/go.mod
+@@ -11,6 +11,7 @@ require (
+ 	github.com/docker/go-units v0.4.0
+ 	github.com/godbus/dbus/v5 v5.0.3
+ 	github.com/golang/protobuf v1.4.2
++	github.com/gotoz/runq/pkg/vm v0.0.0-00010101000000-000000000000
+ 	github.com/moby/sys/mountinfo v0.1.3
+ 	github.com/mrunalp/fileutils v0.0.0-20200520151820-abd8a0e76976
+ 	github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6
+@@ -24,3 +25,5 @@ require (
+ 	github.com/vishvananda/netlink v1.1.0
+ 	golang.org/x/sys v0.0.0-20200728102440-3e129f6d46b1
+ )
++
++replace github.com/gotoz/runq/pkg/vm => ./../runq/pkg/vm
+diff --git a/go.sum b/go.sum
+index fc838f3e..75dbdd17 100644
+--- a/go.sum
++++ b/go.sum
+@@ -36,8 +36,6 @@ github.com/moby/sys/mountinfo v0.1.3 h1:KIrhRO14+AkwKvG/g2yIpNMOUVZ02xNhOw8KY1Ws
+ github.com/moby/sys/mountinfo v0.1.3/go.mod h1:w2t2Avltqx8vE7gX5l+QiBKxODu2TX0+Syr3h52Tw4o=
+ github.com/mrunalp/fileutils v0.0.0-20200520151820-abd8a0e76976 h1:aZQToFSLH8ejFeSkTc3r3L4dPImcj7Ib/KgmkQqbGGg=
+ github.com/mrunalp/fileutils v0.0.0-20200520151820-abd8a0e76976/go.mod h1:x8F1gnqOkIEiO4rqoeEEEqQbo7HjGMTvyoq3gej4iT0=
+-github.com/opencontainers/runtime-spec v1.0.3-0.20200710190001-3e4195d92445 h1:y8cfsJRmn8g3VkM4IDpusKSgMUZEXhudm/BuYANLozE=
+-github.com/opencontainers/runtime-spec v1.0.3-0.20200710190001-3e4195d92445/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
+ github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6 h1:NhsM2gc769rVWDqJvapK37r+7+CBXI8xHhnfnt8uQsg=
+ github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
+ github.com/opencontainers/selinux v1.6.0 h1:+bIAS/Za3q5FTwWym4fTB0vObnfCf3G/NC7K6Jx62mY=
 diff --git a/main.go b/main.go
-index 072447d1..09ba3ec8 100644
+index fd1ad5ff..a9fb4658 100644
 --- a/main.go
 +++ b/main.go
-@@ -112,6 +112,48 @@ func main() {
+@@ -107,6 +107,48 @@ func main() {
  			Value: "auto",
  			Usage: "ignore cgroup permission errors ('true', 'false', or 'auto')",
  		},
@@ -631,10 +662,10 @@ index 00000000..e35be936
 +	return major, minor, err
 +}
 diff --git a/utils.go b/utils.go
-index 5165336f..9aa0a97a 100644
+index c687a478..6c07b614 100644
 --- a/utils.go
 +++ b/utils.go
-@@ -66,6 +66,9 @@ func setupSpec(context *cli.Context) (*specs.Spec, error) {
+@@ -74,6 +74,9 @@ func setupSpec(context *cli.Context) (*specs.Spec, error) {
  	if err != nil {
  		return nil, err
  	}
@@ -644,3 +675,265 @@ index 5165336f..9aa0a97a 100644
  	return spec, nil
  }
  
+diff --git a/vendor/github.com/gotoz/runq/pkg/vm/go.mod b/vendor/github.com/gotoz/runq/pkg/vm/go.mod
+new file mode 100644
+index 00000000..0df934e8
+--- /dev/null
++++ b/vendor/github.com/gotoz/runq/pkg/vm/go.mod
+@@ -0,0 +1,3 @@
++module github.com/gotoz/runq/pkg/vm
++
++go 1.14
+diff --git a/vendor/github.com/gotoz/runq/pkg/vm/vm.go b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
+new file mode 100644
+index 00000000..a1495c46
+--- /dev/null
++++ b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
+@@ -0,0 +1,228 @@
++// Package vm defines data types and functions define and
++// share data between the runtime runq, proxy and init.
++package vm
++
++import (
++	"bytes"
++	"compress/gzip"
++	"encoding/base64"
++	"encoding/gob"
++	"io/ioutil"
++	"net"
++	"syscall"
++
++	"github.com/vishvananda/netlink"
++)
++
++// Msgtype declares the type of a message.
++type Msgtype uint8
++
++// Message types
++const (
++	_       Msgtype = iota
++	Command         // command to execute
++	Signal          // IPC signal such as SIGTERM
++	Vmdata          // VM config data
++)
++
++// Msg defines the format of the data exchanged between proxy and init.
++type Msg struct {
++	Type Msgtype
++	Data []byte
++}
++
++// Disktype represents a valid disk types.
++type Disktype int
++
++// known disk types
++const (
++	DisktypeUnknown Disktype = iota // disk type is not known
++	BlockDevice                     // regular block device
++	Qcow2Image                      // Qcow2 image
++	RawFile                         // regular file used as block device
++)
++
++// AppCapabilities defines whitelists of Linux capabilities
++// for the target application.
++type AppCapabilities struct {
++	Ambient     []string
++	Bounding    []string
++	Effective   []string
++	Inheritable []string
++	Permitted   []string
++}
++
++// Network defines a network interface.
++type Network struct {
++	Name       string
++	MacAddress string
++	MTU        int
++	Addrs      []netlink.Addr
++	Gateway    net.IP
++	TapDevice  string
++}
++
++// Disk defines a disk.
++type Disk struct {
++	Cache  string
++	Dir    string
++	Fstype string
++	ID     string
++	Mount  bool
++	Path   string
++	Serial string
++	Type   Disktype
++}
++
++// Mount defines a mount point.
++type Mount struct {
++	Data   string
++	Flags  int
++	Fstype string
++	ID     string
++	Source string
++	Target string
++}
++
++// User specifies user information for the VM process.
++type User struct {
++	UID            uint32
++	GID            uint32
++	AdditionalGids []uint32
++}
++
++// Certificates definenes TLS certificates
++type Certificates struct {
++	CACert []byte
++	Cert   []byte
++	Key    []byte
++}
++
++// Entrypoint contains information of entrypoint.
++type Entrypoint struct {
++	User
++	Args            []string
++	Capabilities    AppCapabilities
++	Cwd             string
++	DockerInit      string
++	Env             []string
++	NoNewPrivileges bool
++	Rlimits         map[string]syscall.Rlimit
++	Runqenv         bool
++	SeccompGob      []byte
++	Systemd         bool
++	Terminal        bool
++}
++
++// Vsockd contains config data for the vsockd process.
++type Vsockd struct {
++	Certificates
++	EntrypointPid int
++	EntrypointEnv []string
++	CID           uint32
++}
++
++// DNS contains dns configuration.
++type DNS struct {
++	Server  []string
++	Options string
++	Search  string
++}
++
++// Data contains all data needed by the VM.
++type Data struct {
++	APDevice        string
++	ContainerID     string
++	CPU             int
++	Disks           []Disk
++	DNS             DNS
++	GitCommit       string
++	Hostname        string
++	Mem             int
++	Mounts          []Mount
++	NestedVM        bool
++	Networks        []Network
++	NoExec          bool
++	Rootdisk        string
++	RootdiskExclude []string
++	Sysctl          map[string]string
++	Entrypoint      Entrypoint
++	Vsockd          Vsockd
++}
++
++// Encode encodes a data struct into binary Gob.
++func Encode(e interface{}) ([]byte, error) {
++	var buf bytes.Buffer
++	enc := gob.NewEncoder(&buf)
++	if err := enc.Encode(e); err != nil {
++		return []byte{}, err
++	}
++	return buf.Bytes(), nil
++}
++
++// DecodeDataGob decodes a Gob binary buffer into a Data struct.
++func DecodeDataGob(buf []byte) (*Data, error) {
++	dec := gob.NewDecoder(bytes.NewBuffer(buf))
++	v := new(Data)
++	if err := dec.Decode(v); err != nil {
++		return nil, err
++	}
++	return v, nil
++}
++
++// DecodeEntrypointGob decodes a Gob binary buffer into a Entrypoint struct.
++func DecodeEntrypointGob(buf []byte) (*Entrypoint, error) {
++	dec := gob.NewDecoder(bytes.NewBuffer(buf))
++	v := new(Entrypoint)
++	if err := dec.Decode(v); err != nil {
++		return nil, err
++	}
++	return v, nil
++}
++
++// DecodeVsockdGob decodes a Gob binary buffer into a Vsockd struct.
++func DecodeVsockdGob(buf []byte) (*Vsockd, error) {
++	dec := gob.NewDecoder(bytes.NewBuffer(buf))
++	v := new(Vsockd)
++	if err := dec.Decode(v); err != nil {
++		return nil, err
++	}
++	return v, nil
++}
++
++// ZipEncodeBase64 encodes arbritray data into a gziped binary Gob
++// and returns it encoded as base64.
++func ZipEncodeBase64(data interface{}) (string, error) {
++	var buf bytes.Buffer
++	wr := gzip.NewWriter(&buf)
++	enc := gob.NewEncoder(wr)
++	if err := enc.Encode(data); err != nil {
++		return "", err
++	}
++	if err := wr.Close(); err != nil {
++		return "", err
++	}
++	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
++}
++
++// ZipDecodeBase64 decodes a base64 string, into a data struct.
++func ZipDecodeBase64(str string) (*Data, error) {
++	s, err := base64.StdEncoding.DecodeString(str)
++	if err != nil {
++		return nil, err
++	}
++	buf := bytes.NewBuffer(s)
++	rd, err := gzip.NewReader(buf)
++	if err != nil {
++		return nil, err
++	}
++	res, err := ioutil.ReadAll(rd)
++	if err != nil {
++		return nil, err
++	}
++
++	if err := rd.Close(); err != nil {
++		return nil, err
++	}
++	return DecodeDataGob(res)
++}
+diff --git a/vendor/modules.txt b/vendor/modules.txt
+index e92d4469..4d8ff73a 100644
+--- a/vendor/modules.txt
++++ b/vendor/modules.txt
+@@ -30,6 +30,9 @@ github.com/godbus/dbus/v5
+ # github.com/golang/protobuf v1.4.2
+ ## explicit
+ github.com/golang/protobuf/proto
++# github.com/gotoz/runq/pkg/vm v0.0.0-00010101000000-000000000000 => ./../runq/pkg/vm
++## explicit
++github.com/gotoz/runq/pkg/vm
+ # github.com/konsorten/go-windows-terminal-sequences v1.0.3
+ github.com/konsorten/go-windows-terminal-sequences
+ # github.com/moby/sys/mountinfo v0.1.3
+@@ -106,3 +109,4 @@ google.golang.org/protobuf/reflect/protoreflect
+ google.golang.org/protobuf/reflect/protoregistry
+ google.golang.org/protobuf/runtime/protoiface
+ google.golang.org/protobuf/runtime/protoimpl
++# github.com/gotoz/runq/pkg/vm => ./../runq/pkg/vm

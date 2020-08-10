@@ -1,20 +1,9 @@
-language: go
-go:
-    - "1.x"
-go_import_path: github.com/gotoz/runq
-dist: xenial
+dist: bionic
 sudo: required
 services:
     - docker
 before_install:
-    - sudo apt-get update
-    - sudo apt-get install -y libseccomp-dev
     - sudo touch /usr/bin/docker-init
-install:
-    - go get -d github.com/opencontainers/runc
 script:
     - make release
     - sudo make release-install
-    - make clean
-    - sudo make -C qemu install
-    - make all

@@ -43,7 +43,7 @@ For fast development cycles a regular build environment might be more
 efficient. For this refer to section *Developing runq* below.
 
 ```
-# get the source
+# get the runq source
 git clone https://github.com/gotoz/runq.git
 cd runq
 
@@ -457,21 +457,23 @@ However to try out runq in a VM guest the (experimental) runq runtime configurat
 ## Developing runq
 For fast development cycles runq can be build on the host as follows:
 1. Prerequisites:
-* Docker >= 17.09.x-ce
-* Go >= 1.11
+* Docker >= 19.03.x-ce
+* Go >= 1.14
 * `/var/lib/runq` must be writable by the current user
 * [Libseccomp](https://github.com/seccomp/libseccomp/) static library.
 E.g. `libseccomp-dev` for Ubuntu or `libseccomp-static` for Fedora
 
-2. Download runc and runq source code
+2. Download runq and runc source code
     ```
-    go get -d -u github.com/opencontainers/runc
-    go get -d -u github.com/gotoz/runq
+    git clone https://github.com/gotoz/runq.git
+    cd runq
+    git clone https://github.com/opencontainers/runc
+
     ```
 3. Install Qemu and guest kernel to `/var/lib/runq/qemu`<br>
 All files are taken from the Ubuntu 18.04 LTS Docker base image.
+(`/var/lib/runq` must be writeable by the current user.)
     ```
-    cd $GOPATH/src/github.com/gotoz/runq
     make -C qemu all install
     ```
 4. Compile and install runq components to `/var/lib/runq`

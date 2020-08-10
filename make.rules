@@ -1,6 +1,17 @@
+ifndef BASE_DIR
+  BASE_DIR = $(shell while ! test -e make.rules; do cd ..; done; pwd)
+endif
+ifndef RUNC_ROOT
+  RUNC_ROOT = $(BASE_DIR)/runc
+endif
+
 GO := go
 ARCH := $(shell uname -m)
 RUNQ_ROOT := /var/lib/runq
+export RUNQ_ROOT
 QEMU_ROOT := $(RUNQ_ROOT)/qemu
+
 GIT_SHA1 := $(shell git rev-parse --short HEAD)
 GIT_COMMIT := $(if $(shell git status --porcelain --untracked-files=no),$(GIT_SHA1)-dirty,$(GIT_SHA1))
+
+BUILD_IMAGE := runq-build-1804

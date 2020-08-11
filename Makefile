@@ -3,18 +3,23 @@ include make.rules
 SUBDIRS := cmd/proxy cmd/init cmd/runq cmd/runq-exec cmd/nsenter cmd/vsockd
 TAR := runq-$(GIT_COMMIT).tar.gz
 
-.PHONY: all $(SUBDIRS) install image test tarfile release release-install clean distclean
+.PHONY: all $(SUBDIRS) install image test tarfile release release-install clean distclean version
 
 all: $(SUBDIRS)
 
 $(SUBDIRS):
 	$(MAKE) -C $@
 
-install: $(SUBDIRS) $(QEMU_ROOT)
+install: $(SUBDIRS) $(QEMU_ROOT) version
 	$(MAKE) -C cmd/proxy install
 	$(MAKE) -C cmd/runq install
 	$(MAKE) -C cmd/runq-exec install
 	$(MAKE) -C initrd install
+	install -m 0444 -D version $(RUNQ_ROOT)/version
+
+version:
+	echo "Git Commit: $(GIT_COMMIT)" > $@
+	chown `stat --printf "%u:%g" .git` $@
 
 image:
 	$(MAKE) -C qemu image
@@ -37,6 +42,7 @@ release-install: $(TAR)
 
 clean clean2:
 	$(foreach d,$(SUBDIRS) qemu initrd,$(MAKE) -C $(d) clean;)
+	rm -f version
 
 distclean: clean
 	$(MAKE) -C qemu distclean

@@ -1,7 +1,8 @@
 include make.rules
 
 SUBDIRS := cmd/proxy cmd/init cmd/runq cmd/runq-exec cmd/nsenter cmd/vsockd
-TAR := runq-$(GIT_COMMIT).tar.gz
+TARDIR := runq-$(GIT_COMMIT)
+TARFILE := $(TARDIR).tar.gz
 
 .PHONY: all $(SUBDIRS) install image test tarfile release release-install clean distclean version
 
@@ -28,7 +29,8 @@ test:
 	$(MAKE) -C test
 
 tarfile:
-	tar -C / --numeric-owner --owner=0 --group=0 -czf $(TAR) $(RUNQ_ROOT)
+	tar  -C $(RUNQ_ROOT) --transform 's,^./,$(TARDIR)/,' --numeric-owner --owner=0 --group=0 -czf $(TARFILE) .
+	chown `stat --printf "%u:%g" .git` $(TARFILE)
 
 release: image
 	docker run \
@@ -37,11 +39,14 @@ release: image
 		-v /usr/bin/docker-init:/usr/bin/docker-init:ro \
 		$(BUILD_IMAGE) make clean install tarfile clean2
 
-release-install: $(TAR)
-	tar -C / -xzf $(TAR)
+release-install: $(TARFILE)
+	mkdir -p $(RUNQ_ROOT)
+	tar -C $(RUNQ_ROOT) --strip-components 1 -xzf $(TARFILE)
 
 clean clean2:
 	$(foreach d,$(SUBDIRS) qemu initrd,$(MAKE) -C $(d) clean;)
+	git -C $(RUNC_ROOT) clean -xfd
+	git -C $(RUNC_ROOT) reset --hard
 	rm -f version
 
 distclean: clean

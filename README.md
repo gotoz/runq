@@ -43,11 +43,11 @@ For fast development cycles a regular build environment might be more
 efficient. For this refer to section *Developing runq* below.
 
 ```
-# get the runq source
-git clone https://github.com/gotoz/runq.git
-cd runq
+# get the runq and runc source code
+git clone --recurse-submodules https://github.com/gotoz/runq.git
 
-# compile and create a release tar file in Docker container
+# compile and create a release tar file in a Docker container
+cd runq
 make release
 
 # install runq to `/var/lib/runq`
@@ -465,15 +465,14 @@ E.g. `libseccomp-dev` for Ubuntu or `libseccomp-static` for Fedora
 
 2. Download runq and runc source code
     ```
-    git clone https://github.com/gotoz/runq.git
-    cd runq
-    git clone https://github.com/opencontainers/runc
+    git clone --recurse-submodules https://github.com/gotoz/runq.git
 
     ```
 3. Install Qemu and guest kernel to `/var/lib/runq/qemu`<br>
 All files are taken from the Ubuntu 18.04 LTS Docker base image.
 (`/var/lib/runq` must be writeable by the current user.)
     ```
+    cd runq
     make -C qemu all install
     ```
 4. Compile and install runq components to `/var/lib/runq`

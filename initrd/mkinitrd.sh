@@ -12,7 +12,6 @@ while read x f args; do
 done < kernel.conf
 
 cp kernel.conf $TMP_DIR/
-cp bin/busybox $TMP_DIR/sbin/modprobe
 popd >/dev/null
 
 cp $DIR/../cmd/init/init $TMP_DIR/

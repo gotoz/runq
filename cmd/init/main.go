@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -40,10 +39,12 @@ func main() {
 	case "entrypoint":
 		mainEntrypoint()
 		return
+	case "/sbin/modprobe":
+		mainModprobe()
+		return
 	}
 
 	signal.Ignore(unix.SIGTERM, unix.SIGUSR1, unix.SIGUSR2)
-	parseCmdline()
 
 	if err := runInit(); err != nil {
 		shutdown(1, fmt.Sprintf("%+v", err))
@@ -52,6 +53,11 @@ func main() {
 }
 
 func runInit() error {
+	if os.Args[0] != "/init" || len(os.Args) > 1 || os.Getpid() != 1 {
+		fmt.Printf("%s (%s)\n", gitCommit, runtime.Version())
+		os.Exit(0)
+	}
+
 	runtime.LockOSThread()
 	if err := mountInitStage0(); err != nil {
 		return err
@@ -153,6 +159,10 @@ func runInit() error {
 
 	// Start reaper to wait4 zombie processes.
 	go reaper()
+
+	if err := setModprobe(); err != nil {
+		return fmt.Errorf("setModprobe failed: %v", err)
+	}
 
 	// Start entrypoint process.
 	entrypoint, err := newEntrypoint(vmdata.Entrypoint)
@@ -266,23 +276,6 @@ func vportDevice() (string, error) {
 	return "/dev/" + vports[0].Name(), nil
 }
 
-func parseCmdline() {
-	showVersion := flag.Bool("version", false, "output version and exit")
-	flag.Parse()
-	if *showVersion {
-		fmt.Printf("%s (%s)\n", gitCommit, runtime.Version())
-		os.Exit(0)
-	}
-	if len(flag.Args()) > 0 {
-		log.Printf("Warning: unexpected arguments: %v", flag.Args())
-	}
-
-	if os.Getpid() != 1 {
-		log.Print("Error: must run as PID 1")
-		os.Exit(1)
-	}
-}
-
 func loadKernelModules(kind, prefix string) error {
 	file, err := os.Open("/kernel.conf")
 	if err != nil {
@@ -393,4 +386,13 @@ func shutdown(rc uint8, msg string) {
 		}
 		unix.Reboot(unix.LINUX_REBOOT_CMD_RESTART)
 	})
+}
+
+func setModprobe() error {
+	path := "/sbin/modprobe"
+	os.Mkdir("/sbin", 0755)
+	if err := util.CreateSymlink("/init", path); err != nil {
+		return err
+	}
+	return nil
 }

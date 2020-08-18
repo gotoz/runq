@@ -10,6 +10,7 @@ require (
 	github.com/mdlayher/vsock v0.0.0-20200508120832-7ad3638b3fbc
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/pkg/errors v0.9.1
+	github.com/pmorjan/kmod v0.0.0-20200620073327-4889ff2a5685
 	github.com/seccomp/libseccomp-golang v0.9.1
 	github.com/spf13/pflag v1.0.5
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2

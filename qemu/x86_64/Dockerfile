@@ -5,8 +5,8 @@ ENV RUNQ_ROOT /var/lib/runq
 ENV QEMU_ROOT /var/lib/runq/qemu
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV GO_URL https://golang.org/dl/go1.15.linux-amd64.tar.gz
-ENV GO_SHA256 2d75848ac606061efe52a8068d0e647b35ce487a15bb52272c427df485193602
+ENV GO_URL https://golang.org/dl/go1.15.2.linux-amd64.tar.gz
+ENV GO_SHA256 b49fda1ca29a1946d6bb2a5a6982cf07ccd2aba849289508ee0f9918f6bb4552
 ENV PATH /usr/local/go/bin:$PATH
 
 WORKDIR /runq
@@ -15,7 +15,6 @@ RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
-        busybox-static \
         ca-certificates \
         cpio \
         e2fsprogs \
@@ -68,7 +67,6 @@ RUN cp -d --preserve=all --parents \
   $QEMU_ROOT/ 2>&1 | grep -v 'omitting directory';:
 
 RUN cp -a --parents \
-    /bin/busybox \
     /etc/mtab \
     /lib64 \
     /lib/modules \

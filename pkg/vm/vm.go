@@ -124,9 +124,10 @@ type Vsockd struct {
 
 // DNS contains dns configuration.
 type DNS struct {
-	Server  []string
-	Options string
-	Search  string
+	Server   []string
+	Options  string
+	Search   string
+	Preserve bool
 }
 
 // Data contains all data needed by the VM.

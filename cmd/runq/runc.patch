@@ -42,10 +42,10 @@ index fc838f3e..75dbdd17 100644
  github.com/opencontainers/runtime-spec v1.0.3-0.20200728170252-4d89ac9fbff6/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
  github.com/opencontainers/selinux v1.6.0 h1:+bIAS/Za3q5FTwWym4fTB0vObnfCf3G/NC7K6Jx62mY=
 diff --git a/main.go b/main.go
-index fd1ad5ff..a9fb4658 100644
+index fd1ad5ff..6f29f1c4 100644
 --- a/main.go
 +++ b/main.go
-@@ -107,6 +107,48 @@ func main() {
+@@ -107,6 +107,52 @@ func main() {
  			Value: "auto",
  			Usage: "ignore cgroup permission errors ('true', 'false', or 'auto')",
  		},
@@ -75,6 +75,10 @@ index fd1ad5ff..a9fb4658 100644
 +			Usage: "DNS search domains to use",
 +		},
 +		cli.BoolFlag{
++			Name:  "dns-preserve",
++			Usage: "disable generation of resolv.conf",
++		},
++		cli.BoolFlag{
 +			Name:  "nestedvm",
 +			Usage: "enable support for nested VMs",
 +		},
@@ -96,10 +100,10 @@ index fd1ad5ff..a9fb4658 100644
  		checkpointCommand,
 diff --git a/runq.go b/runq.go
 new file mode 100644
-index 00000000..e35be936
+index 00000000..de03235b
 --- /dev/null
 +++ b/runq.go
-@@ -0,0 +1,561 @@
+@@ -0,0 +1,562 @@
 +package main
 +
 +import (
@@ -176,8 +180,9 @@ index 00000000..e35be936
 +	// Linux
 +	//
 +	dns := vm.DNS{
-+		Options: strings.TrimSpace(context.GlobalString("dns-opts")),
-+		Search:  strings.TrimSpace(context.GlobalString("dns-search")),
++		Options:  strings.TrimSpace(context.GlobalString("dns-opts")),
++		Search:   strings.TrimSpace(context.GlobalString("dns-search")),
++		Preserve: context.GlobalBool("dns-preserve"),
 +	}
 +	for _, v := range strings.Split(context.GlobalString("dns"), ",") {
 +		v = strings.TrimSpace(v)
@@ -686,10 +691,10 @@ index 00000000..0df934e8
 +go 1.14
 diff --git a/vendor/github.com/gotoz/runq/pkg/vm/vm.go b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
 new file mode 100644
-index 00000000..a1495c46
+index 00000000..e3a0f5e2
 --- /dev/null
 +++ b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
-@@ -0,0 +1,228 @@
+@@ -0,0 +1,229 @@
 +// Package vm defines data types and functions define and
 +// share data between the runtime runq, proxy and init.
 +package vm
@@ -816,9 +821,10 @@ index 00000000..a1495c46
 +
 +// DNS contains dns configuration.
 +type DNS struct {
-+	Server  []string
-+	Options string
-+	Search  string
++	Server   []string
++	Options  string
++	Search   string
++	Preserve bool
 +}
 +
 +// Data contains all data needed by the VM.

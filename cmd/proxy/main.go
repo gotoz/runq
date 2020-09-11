@@ -274,6 +274,9 @@ func completeVmdata(vmdata *vm.Data) error {
 	if ok {
 		vmdata.DNS.Search = val
 	}
+	if _, ok = os.LookupEnv("RUNQ_DNS_PRESERVE"); ok {
+		vmdata.DNS.Preserve = true
+	}
 
 	err = writeResolvConf(vmdata.DNS)
 	if err != nil {

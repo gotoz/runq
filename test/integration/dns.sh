@@ -54,4 +54,20 @@ docker run \
 
 checkrc $? 0 "$comment"
 
+#
+#
+#
+comment="preserve resolv.conf"
+md5=$(docker run --runtime=runc --network=none --rm \
+	$image cat /etc/resolv.conf | md5sum | awk '{print $1}')
+docker run \
+    --runtime runq \
+    --name $(rand_name) \
+    --rm \
+    -e RUNQ_DNS_PRESERVE="1" \
+    $image  \
+    sh -c "echo '$md5  /etc/resolv.conf' > /x; md5sum -s -c /x"
+
+checkrc $? 0 "$comment"
+
 myexit

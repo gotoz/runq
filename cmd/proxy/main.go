@@ -300,6 +300,8 @@ func completeVmdata(vmdata *vm.Data) error {
 		return err
 	}
 
+	setupIPv6(vmdata)
+
 	if err := updateDisks(vmdata.Disks); err != nil {
 		return err
 	}
@@ -364,4 +366,20 @@ func bindMountKernelModules(dest string) error {
 	}
 	err := unix.Mount(src, dest, "bind", syscall.MS_BIND|syscall.MS_RDONLY, "")
 	return errors.WithStack(err)
+}
+
+func setupIPv6(vmdata *vm.Data) {
+	for _, net := range vmdata.Networks {
+		for _, addr := range net.Addrs {
+			if addr.IP.To4() == nil {
+				// Enable IPv6
+				if vmdata.Sysctl == nil {
+					vmdata.Sysctl = make(map[string]string)
+				}
+				vmdata.Sysctl["net.ipv6.conf.all.disable_ipv6"] = "0"
+				vmdata.Sysctl["net.ipv6.conf.default.disable_ipv6"] = "0"
+				return
+			}
+		}
+	}
 }

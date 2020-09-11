@@ -306,6 +306,8 @@ container at container start.
 The environment variables are `RUNQ_DNS`, `RUNQ_DNS_OPT` and `RUNQ_DNS_SEARCH`.
 Environment variables have priority over global options.
 
+Setting the environment variable RUNQ_DNS_PRESERVE completely disables generation of
+/etc/resolv.conf by runq.
 
 ## Storage
 Extra storage can be added in the form of Qcow2 images, raw file images or

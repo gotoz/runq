@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -72,8 +73,46 @@ func run(vmdataB64 string) (int, error) {
 		return 1, fmt.Errorf("binary missmatch runq:%q proxy:%q", vmdata.GitCommit, gitCommit)
 	}
 
+	if vmdata.RootFSReadonly {
+		path := "/"
+		if err := unix.Mount(path, path, "", unix.MS_REMOUNT, ""); err != nil {
+			return 1, errors.WithStack(err)
+		}
+	}
+
 	if err = completeVmdata(vmdata); err != nil {
 		return 1, err
+	}
+
+	if vmdata.Runqenv {
+		if err := writeEnvfile(cfg.Envfile, vmdata.Entrypoint.Env); err != nil {
+			return 1, errors.WithStack(err)
+		}
+	}
+
+	for _, m := range vmdata.Mounts {
+		if err := os.MkdirAll(m.Target, 0755); err != nil {
+			return 1, errors.WithStack(err)
+		}
+	}
+	for _, d := range vmdata.Disks {
+		if d.Dir != "" {
+			if err := os.MkdirAll(d.Dir, 0755); err != nil {
+				return 1, errors.WithStack(err)
+			}
+		}
+	}
+	if target := vmdata.Entrypoint.DockerInit; target != "" {
+		if !util.FileExists(target) {
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return 1, errors.WithStack(err)
+			}
+			fp, err := os.Create(target)
+			if err != nil {
+				return 1, errors.WithStack(err)
+			}
+			fp.Close()
+		}
 	}
 
 	for _, d := range []string{"/dev", "/proc", "/sys"} {
@@ -83,6 +122,11 @@ func run(vmdataB64 string) (int, error) {
 	}
 
 	if err = unix.PivotRoot("/qemu", "/qemu/rootfs"); err != nil {
+		return 1, errors.WithStack(err)
+	}
+
+	// Remove empty mountpoint.
+	if err := os.Remove("/rootfs/qemu"); err != nil {
 		return 1, errors.WithStack(err)
 	}
 
@@ -113,6 +157,12 @@ func run(vmdataB64 string) (int, error) {
 
 	if err = bindMountKernelModules(modulesMountDir); err != nil {
 		return 1, err
+	}
+
+	if vmdata.RootFSReadonly && share == "/rootfs" {
+		if err := unix.Mount(share, share, "", unix.MS_BIND|unix.MS_REMOUNT|unix.MS_RDONLY, ""); err != nil {
+			return 1, err
+		}
 	}
 
 	// ackChan receives acknowledge messages from init.
@@ -330,7 +380,7 @@ func completeVmdata(vmdata *vm.Data) error {
 	}
 
 	if _, ok := os.LookupEnv("RUNQ_RUNQENV"); ok {
-		vmdata.Entrypoint.Runqenv = true
+		vmdata.Runqenv = true
 	}
 
 	if _, ok := os.LookupEnv("RUNQ_SYSTEMD"); ok {
@@ -364,4 +414,28 @@ func bindMountKernelModules(dest string) error {
 	}
 	err := unix.Mount(src, dest, "bind", syscall.MS_BIND|syscall.MS_RDONLY, "")
 	return errors.WithStack(err)
+}
+
+func writeEnvfile(path string, env []string) error {
+	var buf bytes.Buffer
+	for _, v := range env {
+		f := strings.SplitN(v, "=", 2)
+		if len(f) < 2 {
+			continue
+		}
+		if f[1] == "" {
+			v = fmt.Sprintf("%s=%q", f[0], "")
+		} else {
+			r := []rune(f[1])
+			first := r[0]
+			last := r[len(r)-1]
+			if (first != '\'' && first != '"') || (last != '\'' && last != '"') {
+				v = fmt.Sprintf("%s=%q", f[0], f[1])
+			}
+		}
+		if _, err := buf.WriteString(v + "\n"); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	return errors.WithStack(ioutil.WriteFile(path, buf.Bytes(), 0444))
 }

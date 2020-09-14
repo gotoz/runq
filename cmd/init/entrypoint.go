@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -56,12 +55,6 @@ func runEntrypoint() error {
 
 	if err := chroot("/rootfs"); err != nil {
 		return err
-	}
-
-	if entrypoint.Runqenv {
-		if err := writeEnvfile(cfg.Envfile, entrypoint.Env); err != nil {
-			return err
-		}
 	}
 
 	if !entrypoint.Systemd {
@@ -228,28 +221,4 @@ func setIDs(uid, gid uint32, gids []uint32) error {
 		return fmt.Errorf("setuid failed: %v", os.NewSyscallError("SYS_SETUID", errno))
 	}
 	return nil
-}
-
-func writeEnvfile(path string, env []string) error {
-	var buf bytes.Buffer
-	for _, v := range env {
-		f := strings.SplitN(v, "=", 2)
-		if len(f) < 2 {
-			continue
-		}
-		if f[1] == "" {
-			v = fmt.Sprintf("%s=%q", f[0], "")
-		} else {
-			r := []rune(f[1])
-			first := r[0]
-			last := r[len(r)-1]
-			if (first != '\'' && first != '"') || (last != '\'' && last != '"') {
-				v = fmt.Sprintf("%s=%q", f[0], f[1])
-			}
-		}
-		if _, err := buf.WriteString(v + "\n"); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	return errors.WithStack(ioutil.WriteFile(path, buf.Bytes(), 0444))
 }

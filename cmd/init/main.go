@@ -106,24 +106,19 @@ func runInit() error {
 	// including /lib/modules.
 	// When using a rootdisk the 9pfs share contains only /lib/modules
 	if vmdata.Rootdisk == "" {
-		if err := mountInitShare("rootfs", "/rootfs"); err != nil {
+		if err := mountInitShare("rootfs", "/rootfs", vmdata.RootFSReadonly); err != nil {
 			return err
 		}
 	} else {
-		if err := setupRootdisk(vmdata); err != nil {
+		if err := setupRootdisk(vmdata, vmdata.RootFSReadonly); err != nil {
 			return err
 		}
-		if err := mountInitShare("share", "/rootfs/lib/modules"); err != nil {
+		if err := mountInitShare("share", "/rootfs/lib/modules", vmdata.RootFSReadonly); err != nil {
 			return err
 		}
 	}
 	if err := util.CreateSymlink("/rootfs/lib/modules", "/lib/modules"); err != nil {
 		return err
-	}
-
-	// Remove empty mountpoint.
-	if err := os.Remove("/rootfs/qemu"); err != nil && !os.IsNotExist(err) {
-		return errors.WithStack(err)
 	}
 
 	if err := mountInitStage1(vmdata.Mounts); err != nil {

@@ -226,8 +226,10 @@ func prepareRootdisk(vmdata *vm.Data) error {
 			return fmt.Errorf("rsync failed: %v rc=%d %s", err, rc, msg)
 		}
 	}
-	if err := os.MkdirAll("/lib/modules", 0755); err != nil {
-		return err
+	for _, d := range []string{"/dev", "/proc", "/sys", "/lib/modules"} {
+		if err := os.MkdirAll(dest+"/"+d, 0755); err != nil {
+			return err
+		}
 	}
 	return nil
 }

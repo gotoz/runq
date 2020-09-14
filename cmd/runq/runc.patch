@@ -96,10 +96,10 @@ index fd1ad5ff..a9fb4658 100644
  		checkpointCommand,
 diff --git a/runq.go b/runq.go
 new file mode 100644
-index 00000000..e35be936
+index 00000000..774bc128
 --- /dev/null
 +++ b/runq.go
-@@ -0,0 +1,561 @@
+@@ -0,0 +1,565 @@
 +package main
 +
 +import (
@@ -194,10 +194,15 @@ index 00000000..e35be936
 +		Mem:         context.GlobalInt("mem"),
 +		NestedVM:    context.GlobalBool("nestedvm"),
 +		NoExec:      context.GlobalBool("noexec"),
++		Runqenv:     context.GlobalBool("runqenv"),
 +		Sysctl:      spec.Linux.Sysctl,
 +	}
 +
 +	spec.Linux.Sysctl = nil
++
++	if spec.Root.Readonly {
++		vmdata.RootFSReadonly = true
++	}
 +
 +	if err := specDevices(spec, &vmdata); err != nil {
 +		return err
@@ -214,7 +219,6 @@ index 00000000..e35be936
 +		Args:            spec.Process.Args,
 +		Cwd:             spec.Process.Cwd,
 +		NoNewPrivileges: spec.Process.NoNewPrivileges,
-+		Runqenv:         context.GlobalBool("runqenv"),
 +		Terminal:        spec.Process.Terminal,
 +	}
 +
@@ -686,10 +690,10 @@ index 00000000..0df934e8
 +go 1.14
 diff --git a/vendor/github.com/gotoz/runq/pkg/vm/vm.go b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
 new file mode 100644
-index 00000000..a1495c46
+index 00000000..fa43fd15
 --- /dev/null
 +++ b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
-@@ -0,0 +1,228 @@
+@@ -0,0 +1,229 @@
 +// Package vm defines data types and functions define and
 +// share data between the runtime runq, proxy and init.
 +package vm
@@ -800,7 +804,6 @@ index 00000000..a1495c46
 +	Env             []string
 +	NoNewPrivileges bool
 +	Rlimits         map[string]syscall.Rlimit
-+	Runqenv         bool
 +	SeccompGob      []byte
 +	Systemd         bool
 +	Terminal        bool
@@ -835,8 +838,10 @@ index 00000000..a1495c46
 +	NestedVM        bool
 +	Networks        []Network
 +	NoExec          bool
++	RootFSReadonly  bool
 +	Rootdisk        string
 +	RootdiskExclude []string
++	Runqenv         bool
 +	Sysctl          map[string]string
 +	Entrypoint      Entrypoint
 +	Vsockd          Vsockd

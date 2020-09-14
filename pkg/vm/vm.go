@@ -108,7 +108,6 @@ type Entrypoint struct {
 	Env             []string
 	NoNewPrivileges bool
 	Rlimits         map[string]syscall.Rlimit
-	Runqenv         bool
 	SeccompGob      []byte
 	Systemd         bool
 	Terminal        bool
@@ -143,8 +142,10 @@ type Data struct {
 	NestedVM        bool
 	Networks        []Network
 	NoExec          bool
+	RootFSReadonly  bool
 	Rootdisk        string
 	RootdiskExclude []string
+	Runqenv         bool
 	Sysctl          map[string]string
 	Entrypoint      Entrypoint
 	Vsockd          Vsockd

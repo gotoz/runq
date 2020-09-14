@@ -48,13 +48,16 @@ func mountInitStage0() error {
 	return mount(mounts...)
 }
 
-func mountInitShare(source, target string) error {
+func mountInitShare(source, target string, readonly bool) error {
 	mnt := vm.Mount{
 		Source: source,
 		Target: target,
 		Fstype: "9p",
 		Flags:  unix.MS_NODEV | unix.MS_DIRSYNC,
 		Data:   "trans=virtio,cache=mmap",
+	}
+	if readonly {
+		mnt.Flags |= unix.MS_RDONLY
 	}
 	return mount(mnt)
 }

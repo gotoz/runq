@@ -49,7 +49,7 @@ func setupDisks(disks []vm.Disk) error {
 	return nil
 }
 
-func setupRootdisk(vmdata *vm.Data) error {
+func setupRootdisk(vmdata *vm.Data, readonly bool) error {
 	var disk vm.Disk
 	for i, d := range vmdata.Disks {
 		if d.ID == vmdata.Rootdisk {
@@ -78,6 +78,9 @@ func setupRootdisk(vmdata *vm.Data) error {
 		Target: "/rootfs",
 		Fstype: disk.Fstype,
 		Flags:  0,
+	}
+	if readonly {
+		mnt.Flags |= unix.MS_RDONLY
 	}
 	if err := mount(mnt); err != nil {
 		return err

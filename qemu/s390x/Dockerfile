@@ -41,8 +41,7 @@ RUN mkdir -p \
     $QEMU_ROOT/share \
     $QEMU_ROOT/sys
 
-RUN rm -f /lib/modules/*/build \
-    && echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                               >  $QEMU_ROOT/kernel.conf \
+RUN    echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                               >  $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/net/9p/9pnet.ko                                     >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/net/9p/9pnet_virtio.ko                              >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/fs/9p/9p.ko                                         >> $QEMU_ROOT/kernel.conf \

@@ -34,7 +34,6 @@ func qemuConfig(vmdata *vm.Data, socket, share string) ([]string, error) {
 	case "s390x":
 		args = []string{
 			"/usr/bin/qemu-system-s390x",
-			"-device", "virtio-rng-ccw,max-bytes=1024,period=1000",
 			"-device", "virtio-9p-ccw,fsdev=share,mount_tag=" + shareName,
 			"-device", "virtio-serial-ccw",
 			"-device", "sclpconsole,chardev=console",

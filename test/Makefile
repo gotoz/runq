@@ -5,7 +5,7 @@ include ../make.rules
 all: integration examples
 
 integration:
-	docker run --runtime runq busybox env
+	docker run --runtime runq alpine env
 	./run.sh ./integration/*.sh
 
 examples:

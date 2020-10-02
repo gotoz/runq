@@ -13,7 +13,7 @@ Key differences to other hypervisor-based runtimes:
 * no extra state outside of Docker (no libvirt, no changes to /var/run/...)
 * small init program, no systemd
 * no custom guest kernel or custom qemu needed
-* runs on x86_64 and s390x
+* runs on x86_64 and s390x (>= z14)
 
 ## runc vs. runq
 ```
@@ -89,13 +89,14 @@ Examples of server and client TLS certificates can be created with the script:
 ```
 /var/lib/runq/qemu/mkcerts.sh
 ```
-Note: The host must provide sufficient entropy to the VM guests. If there is not enough
+Note: On x86 the host must provide sufficient entropy to the VM guests. If there is not enough
 entropy available booting of guests can fail with a timeout error. The entropy that's
 currently available can be checked with:
 ```
 cat /proc/sys/kernel/random/entropy_avail
 ```
 The number returned should always be greater than 1000.
+On s390x the hardware driven trng device is used for random data.
 
 #### Kernel module vhost_vsock
 The kernel module `vhost_vsock` must be loaded on the host. This can be achieved by creating

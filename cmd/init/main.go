@@ -67,6 +67,16 @@ func runInit() error {
 		return err
 	}
 
+	machineType, err := util.MachineType()
+	if err != nil {
+		return err
+	}
+	if !strings.HasPrefix(machineType, "2") {
+		if err := loadKernelModules("z14+", ""); err != nil {
+			return err
+		}
+	}
+
 	vportDev, err := vportDevice()
 	if err != nil {
 		return err

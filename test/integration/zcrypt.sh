@@ -17,10 +17,11 @@ for uuid in $uuids; do
         --rm \
         -e RUNQ_APUUID=$uuid \
         $image \
-            sh -c 'exit `cat /sys/devices/ap/card*/hwtype`'
+            sh -c 't="`cat /sys/devices/ap/card*/hwtype`" && test "$t" -gt 10'
     rc=$?
-    checkrc $rc 11 "mediated device: $uuid"
-    test $rc -ne 11 && ((rc_all++))
+    checkrc $rc 0 "mediated device: $uuid"
+    test $rc -ne 0 && ((rc_all++))
+
 done
 
 checkrc 0 $rc_all "crypto device passthrough"

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -218,4 +219,40 @@ func ToBool(s string) bool {
 		return true
 	}
 	return false
+}
+
+// MachineType returns the s390x machine type
+// ec12: 2827
+// bc12: 2828
+// z13 : 2965
+// z14 : 3906
+// z15 : 8561 (T01) or 8562 (T02)
+func MachineType() (string, error) {
+	if runtime.GOARCH != "s390x" {
+		return "", nil
+	}
+	f, err := os.Open("/proc/sysinfo")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	var res string
+	for scanner.Scan() {
+		field := strings.Fields(scanner.Text())
+		if len(field) < 2 {
+			continue
+		}
+		if field[0] == "Type:" {
+			res = field[1]
+			break
+		}
+	}
+	if scanner.Err() != nil {
+		return "", fmt.Errorf("can't read maschine type: %v", err)
+	}
+	if len(res) != 4 {
+		return "", fmt.Errorf("invalid machine type %q", res)
+	}
+	return res, nil
 }

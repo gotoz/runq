@@ -20,7 +20,8 @@ RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
         e2fsprogs \
         git \
         libseccomp-dev \
-        linux-virtual \
+        linux-image-virtual \
+        linux-image-extra-virtual \
         pkg-config \
         qemu-kvm \
         rsync \
@@ -47,7 +48,6 @@ RUN    echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                  
     && echo base   /lib/modules/*/kernel/fs/9p/9p.ko                                         >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/drivers/block/virtio_blk.ko                         >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/drivers/net/virtio_net.ko                           >> $QEMU_ROOT/kernel.conf \
-    && echo base   /lib/modules/*/kernel/drivers/char/hw_random/virtio-rng.ko                >> $QEMU_ROOT/kernel.conf \
     && echo vsock  /lib/modules/*/kernel/net/vmw_vsock/vsock.ko                              >> $QEMU_ROOT/kernel.conf \
     && echo vsock  /lib/modules/*/kernel/net/vmw_vsock/vmw_vsock_virtio_transport_common.ko  >> $QEMU_ROOT/kernel.conf \
     && echo vsock  /lib/modules/*/kernel/net/vmw_vsock/vmw_vsock_virtio_transport.ko         >> $QEMU_ROOT/kernel.conf \
@@ -59,7 +59,9 @@ RUN    echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                  
     && echo xfs    /lib/modules/*/kernel/lib/libcrc32c.ko                                    >> $QEMU_ROOT/kernel.conf \
     && echo xfs    /lib/modules/*/kernel/fs/xfs/xfs.ko                                       >> $QEMU_ROOT/kernel.conf \
     && echo zcrypt /lib/modules/*/kernel/drivers/s390/crypto/zcrypt.ko                       >> $QEMU_ROOT/kernel.conf \
-    && echo zcrypt /lib/modules/*/kernel/drivers/s390/crypto/zcrypt_cex4.ko                  >> $QEMU_ROOT/kernel.conf
+    && echo zcrypt /lib/modules/*/kernel/drivers/s390/crypto/zcrypt_cex4.ko                  >> $QEMU_ROOT/kernel.conf \
+    && echo z14+   /lib/modules/*/kernel/drivers/char/hw_random/s390-trng.ko                 >> $QEMU_ROOT/kernel.conf
+
 
 ADD extract-vmlinux.sh /extract-vmlinux.sh
 

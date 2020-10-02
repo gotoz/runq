@@ -210,3 +210,12 @@ func CreateSymlink(target, newPath string) error {
 	}
 	return nil
 }
+
+// ToBool returns true for strings that represent a true value.
+func ToBool(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "1", "on", "yes", "true":
+		return true
+	}
+	return false
+}

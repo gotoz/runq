@@ -171,8 +171,8 @@ and [test/examples/systemd.sh](test/examples/systemd.sh) for an example.
 Runq can write the container environment variables in a file named `/.runqenv` placed in
 the root directory of the container. This might be useful for containers running Systemd
 as entry point. This feature can be enabled globally by configuring `--runqenv` in
-[/etc/docker/daemon.json](test/testdata/daemon.json) or for a single container via the
-environment variable `RUNQ_RUNQENV`.
+[/etc/docker/daemon.json](test/testdata/daemon.json) or for a single container by setting
+the environment variable `RUNQ_RUNQENV` to a true value.
 
 ## runq Components
 ```
@@ -245,7 +245,7 @@ additional commands in existing runq containers executed from the host. It uses
 [VirtioVsock](https://wiki.qemu.org/Features/VirtioVsock) for the communication
 between host and VMs. TLS is used for encryption and client authorization. Support for
 `runq-exec` can be disabled by setting the container environment variable `RUNQ_NOEXEC`
-or by `--noexec` in [/etc/docker/daemon.json](test/testdata/daemon.json).
+to a true value or by `--noexec` in [/etc/docker/daemon.json](test/testdata/daemon.json).
 ```
 Usage:
   runq-exec [options] <container> command args
@@ -306,7 +306,7 @@ container at container start.
 The environment variables are `RUNQ_DNS`, `RUNQ_DNS_OPT` and `RUNQ_DNS_SEARCH`.
 Environment variables have priority over global options.
 
-Setting the environment variable RUNQ_DNS_PRESERVE completely disables generation of
+Setting the environment variable RUNQ_DNS_PRESERVE to "1" completely disables generation of
 /etc/resolv.conf by runq.
 
 ## Storage

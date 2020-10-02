@@ -274,9 +274,7 @@ func completeVmdata(vmdata *vm.Data) error {
 	if ok {
 		vmdata.DNS.Search = val
 	}
-	if _, ok = os.LookupEnv("RUNQ_DNS_PRESERVE"); ok {
-		vmdata.DNS.Preserve = true
-	}
+	vmdata.DNS.Preserve = util.ToBool(os.Getenv("RUNQ_DNS_PRESERVE"))
 
 	err = writeResolvConf(vmdata.DNS)
 	if err != nil {
@@ -307,9 +305,7 @@ func completeVmdata(vmdata *vm.Data) error {
 		return err
 	}
 
-	if _, ok := os.LookupEnv("RUNQ_NOEXEC"); ok {
-		vmdata.NoExec = true
-	}
+	vmdata.NoExec = util.ToBool(os.Getenv("RUNQ_NOEXEC"))
 	if !vmdata.NoExec {
 		// CID (uint32) is taken from the first 8 characters of the Docker container ID.
 		// In the unlikely event that there is already a container with a container ID that
@@ -332,13 +328,9 @@ func completeVmdata(vmdata *vm.Data) error {
 		copy(vmdata.Vsockd.EntrypointEnv, vmdata.Entrypoint.Env)
 	}
 
-	if _, ok := os.LookupEnv("RUNQ_RUNQENV"); ok {
-		vmdata.Entrypoint.Runqenv = true
-	}
+	vmdata.Entrypoint.Runqenv = util.ToBool(os.Getenv("RUNQ_RUNQENV"))
 
-	if _, ok := os.LookupEnv("RUNQ_SYSTEMD"); ok {
-		vmdata.Entrypoint.Systemd = true
-	}
+	vmdata.Entrypoint.Systemd = util.ToBool(os.Getenv("RUNQ_SYSTEMD"))
 
 	arg0 := vmdata.Entrypoint.Args[0]
 	if arg0 == "/dev/init" {

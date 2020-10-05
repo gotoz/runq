@@ -123,7 +123,7 @@ func run(vmdataB64 string) (int, error) {
 		return 1, err
 	}
 
-	args, err := qemuConfig(vmdata, vmsocket, share)
+	args, err := qemuArgs(vmdata, vmsocket, share)
 	if err != nil {
 		return 1, err
 	}

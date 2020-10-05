@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -120,6 +121,10 @@ func run(vmdataB64 string) (int, error) {
 	const vmsocket = "/dev/runq.sock"
 	msgChan, ackChan, err := mkChannel(vmsocket)
 	if err != nil {
+		return 1, err
+	}
+
+	if err := getQemuVersion(vmdata); err != nil {
 		return 1, err
 	}
 
@@ -359,4 +364,29 @@ func bindMountKernelModules(dest string) error {
 	}
 	err := unix.Mount(src, dest, "bind", syscall.MS_BIND|syscall.MS_RDONLY, "")
 	return errors.WithStack(err)
+}
+
+func getQemuVersion(vmdata *vm.Data) error {
+	var exe string
+	switch runtime.GOARCH {
+	case "amd64":
+		exe = "/usr/bin/qemu-system-x86_64"
+	case "s390x":
+		exe = "/usr/bin/qemu-system-s390x"
+	default:
+		return fmt.Errorf("%s not supported", runtime.GOARCH)
+	}
+	cmd := exec.Command(exe, "-version")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+
+	re := regexp.MustCompile(`^QEMU emulator version (\d+\.\d+\.\d+)`)
+	match := re.FindStringSubmatch(string(out))
+	if match == nil || len(match) < 2 {
+		return fmt.Errorf("can't find Qemu version in %q", string(out))
+	}
+	vmdata.QemuVersion = match[1]
+	return nil
 }

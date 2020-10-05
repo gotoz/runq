@@ -144,6 +144,7 @@ type Data struct {
 	NestedVM        bool
 	Networks        []Network
 	NoExec          bool
+	QemuVersion     string
 	Rootdisk        string
 	RootdiskExclude []string
 	Sysctl          map[string]string

@@ -348,6 +348,10 @@ func completeVmdata(vmdata *vm.Data) error {
 		}
 	}
 
+	if vmdata.MachineType, err = util.MachineType(); err != nil {
+		return err
+	}
+
 	os.Clearenv()
 	return nil
 }

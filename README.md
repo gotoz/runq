@@ -89,14 +89,14 @@ Examples of server and client TLS certificates can be created with the script:
 ```
 /var/lib/runq/qemu/mkcerts.sh
 ```
-Note: On x86 the host must provide sufficient entropy to the VM guests. If there is not enough
-entropy available booting of guests can fail with a timeout error. The entropy that's
-currently available can be checked with:
+Note: On x86 and s390x < z14 the host must provide sufficient entropy to the VM guests via virtio-rng.
+If there is not enough entropy available on the host booting of guests can fail with a timeout error.
+The entropy that's currently available can be checked with:
 ```
 cat /proc/sys/kernel/random/entropy_avail
 ```
-The number returned should always be greater than 1000.
-On s390x the hardware driven trng device is used for random data.
+The number returned should always be greater than 1000. On s390x >=z14 random data is provided 
+by the hardware driven trng device (kernel module s390-trng).
 
 #### Kernel module vhost_vsock
 The kernel module `vhost_vsock` must be loaded on the host. This can be achieved by creating

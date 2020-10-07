@@ -67,16 +67,6 @@ func runInit() error {
 		return err
 	}
 
-	machineType, err := util.MachineType()
-	if err != nil {
-		return err
-	}
-	if !strings.HasPrefix(machineType, "2") {
-		if err := loadKernelModules("z14+", ""); err != nil {
-			return err
-		}
-	}
-
 	vportDev, err := vportDevice()
 	if err != nil {
 		return err
@@ -104,6 +94,16 @@ func runInit() error {
 	// Ensure runq and init are build from same commit.
 	if gitCommit == "" || vmdata.GitCommit == "" || vmdata.GitCommit != gitCommit {
 		shutdown(1, fmt.Sprintf("binary missmatch proxy:%q init:%q", vmdata.GitCommit, gitCommit))
+	}
+
+	if vmdata.MachineType == "z13" {
+		if err := loadKernelModules("z13", ""); err != nil {
+			return err
+		}
+	} else {
+		if err := loadKernelModules("z14+", ""); err != nil {
+			return err
+		}
 	}
 
 	if !vmdata.NoExec {

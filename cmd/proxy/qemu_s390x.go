@@ -54,6 +54,10 @@ func qemuArgs(vmdata *vm.Data, socket, share string) ([]string, error) {
 		args = append(args, "-device", "vfio-ap,sysfsdev="+vmdata.APDevice)
 	}
 
+	if vmdata.MachineType == "z13" {
+		args = append(args, "-device", "virtio-rng-ccw,max-bytes=1024,period=1000")
+	}
+
 	if len(vmdata.Disks) > 0 {
 		args = append(args, "-object", "iothread,id=iothread1")
 		for i, d := range vmdata.Disks {

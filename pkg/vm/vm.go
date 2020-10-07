@@ -139,6 +139,7 @@ type Data struct {
 	DNS             DNS
 	GitCommit       string
 	Hostname        string
+	MachineType     string
 	Mem             int
 	Mounts          []Mount
 	NestedVM        bool

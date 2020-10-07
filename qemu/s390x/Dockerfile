@@ -60,6 +60,7 @@ RUN    echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                  
     && echo xfs    /lib/modules/*/kernel/fs/xfs/xfs.ko                                       >> $QEMU_ROOT/kernel.conf \
     && echo zcrypt /lib/modules/*/kernel/drivers/s390/crypto/zcrypt.ko                       >> $QEMU_ROOT/kernel.conf \
     && echo zcrypt /lib/modules/*/kernel/drivers/s390/crypto/zcrypt_cex4.ko                  >> $QEMU_ROOT/kernel.conf \
+    && echo z13    /lib/modules/*/kernel/drivers/char/hw_random/virtio-rng.ko                >> $QEMU_ROOT/kernel.conf \
     && echo z14+   /lib/modules/*/kernel/drivers/char/hw_random/s390-trng.ko                 >> $QEMU_ROOT/kernel.conf
 
 

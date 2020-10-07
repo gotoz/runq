@@ -13,7 +13,7 @@ Key differences to other hypervisor-based runtimes:
 * no extra state outside of Docker (no libvirt, no changes to /var/run/...)
 * small init program, no systemd
 * no custom guest kernel or custom qemu needed
-* runs on x86_64 and s390x (>= z14)
+* runs on x86_64 and s390x (>= z13)
 
 ## runc vs. runq
 ```

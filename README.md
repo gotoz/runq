@@ -3,7 +3,7 @@
 # runq
 
 runq is a hypervisor-based Docker runtime based on [runc](https://github.com/opencontainers/runc)
-to run regular Docker images in a lightweight KVM/Qemu virtual machine.
+to run regular Docker images as a lightweight KVM/Qemu virtual machine.
 The focus is on solving real problems, not on number of features.
 
 Key differences to other hypervisor-based runtimes:

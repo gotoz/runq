@@ -7,7 +7,7 @@ cleanup() {
     rm -rf $build_dir
     docker rmi $local_image
 }
-trap "cleanup; myexit" 0 2 15
+trap "cleanup; myexit" EXIT
 
 pushd $build_dir
 

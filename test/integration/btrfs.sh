@@ -28,7 +28,7 @@ cleanup() {
     rm -f $qcow1
     rm -f $dev2
 }
-trap "cleanup; myexit" 0 2 15
+trap "cleanup; myexit" EXIT
 
 
 qemu-img create -f qcow2 $qcow1 200m >/dev/null

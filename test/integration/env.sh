@@ -2,7 +2,7 @@
 . $(cd ${0%/*};pwd;)/../common.sh
 
 tmpfile=$(mktemp)
-trap "rm -f $tmpfile; myexit" 0 2 15
+trap "rm -f $tmpfile; myexit" EXIT
 
 for ((i=0; i< 1000; i++)); do
     foo=$(dd if=/dev/urandom bs=1k count=10 2>/dev/null | tr -dc A-Za-z0-9 | tail -c 1024)

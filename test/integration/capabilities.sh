@@ -7,7 +7,7 @@ cleanup() {
     rm -f $tmpfileA
     rm -f $tmpfileB
 }
-trap "cleanup; myexit" 0 2 15
+trap "cleanup; myexit" EXIT
 
 comment="insmod is forbidden by default"
 docker run \

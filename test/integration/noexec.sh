@@ -9,7 +9,7 @@ name=$(rand_name)
 cleanup() {
     docker rm -f $name &>/dev/null
 }
-trap "cleanup; myexit" 0 2 15
+trap "cleanup; myexit" EXIT
 
 #
 #

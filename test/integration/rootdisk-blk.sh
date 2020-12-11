@@ -10,7 +10,7 @@ cleanup() {
    docker rm -f $name 2>/dev/null
    myexit
 }
-trap cleanup 0 2 15
+trap cleanup EXIT
 
 modprobe brd &>/dev/null
 

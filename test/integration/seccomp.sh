@@ -14,7 +14,7 @@ cleanup() {
     rm -f $custom_profile
     myexit
 }
-trap "cleanup; myexit" 0 2 15
+trap "cleanup; myexit" EXIT
 
 comment="default profile disallows unshare"
 docker run \

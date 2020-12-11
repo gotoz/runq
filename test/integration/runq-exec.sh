@@ -8,7 +8,7 @@ cleanup() {
     rm -f $tmpfile
     docker rm -f $name &>/dev/null
 }
-trap "cleanup; myexit" 0 2 15
+trap "cleanup; myexit" EXIT
 
 #
 # capture stdout

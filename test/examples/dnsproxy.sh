@@ -6,7 +6,7 @@ cleanup() {
     docker rm -f dns1 dns2 foo >/dev/null
     docker network rm mynet >/dev/null
 }
-trap "cleanup; myexit" 0 2 15
+trap "cleanup; myexit" EXIT
 
 # Note:
 # /etc/resolv.conf of runq containers is written only once at container start.

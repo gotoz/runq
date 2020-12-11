@@ -12,7 +12,7 @@ cleanup() {
     done
 }
 
-trap "cleanup; myexit" 0 2 15
+trap "cleanup; myexit" EXIT
 
 comment="attach container to multiple networks"
 docker create \

@@ -10,7 +10,7 @@ cleanup() {
     rm -f $dev
 }
 
-trap "cleanup; myexit" 0 2 15
+trap "cleanup; myexit" EXIT
 
 for fs in ext2 ext3 ext4 xfs; do
     rm -f $dev

@@ -15,7 +15,7 @@ cleanup() {
     rm -f $disk
     myexit
 }
-trap cleanup 0 2 15
+trap cleanup EXIT
 
 docker run \
     --runtime runq \

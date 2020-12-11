@@ -31,7 +31,7 @@ cleanup() {
     rm -f $dev3
     test -b $dev2 && dd if=/dev/zero of=$dev2 bs=1M >/dev/null 2>&1
 }
-trap "cleanup; myexit" 0 2 15
+trap "cleanup; myexit" EXIT
 
 
 qemu-img create -f qcow2 $qcow1 100m >/dev/null

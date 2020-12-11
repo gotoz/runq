@@ -9,7 +9,7 @@ cleanup() {
    rm -f $file
    myexit
 }
-trap cleanup 0 2 15
+trap cleanup EXIT
 
 dd if=/dev/zero of=$file bs=1M count=100 >/dev/null
 mkfs.ext4 -F $file

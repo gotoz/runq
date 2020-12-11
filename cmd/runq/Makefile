@@ -17,5 +17,5 @@ install: runq
 clean:
 	git -C $(RUNC_ROOT) clean -fd
 	git -C $(RUNC_ROOT) reset --hard
-	git -C $(RUNC_ROOT) submodule update --init
+	git submodule update --init
 	rm -f runq

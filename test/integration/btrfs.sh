@@ -33,6 +33,7 @@ trap "cleanup; myexit" EXIT
 
 qemu-img create -f qcow2 $qcow1 200m >/dev/null
 qemu-nbd -d $dev1
+sleep 1
 qemu-nbd -c $dev1 $qcow1
 
 mkfs.btrfs -f $dev1

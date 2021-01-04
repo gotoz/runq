@@ -38,6 +38,7 @@ qemu-img create -f qcow2 $qcow1 100m >/dev/null
 qemu-img create -f qcow2 $qcow2 100m >/dev/null
 
 qemu-nbd -d $dev1
+sleep 1
 qemu-nbd -c $dev1 $qcow1
 
 mkfs.ext2 -F $dev1

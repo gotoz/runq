@@ -310,7 +310,11 @@ func completeVmdata(vmdata *vm.Data) error {
 		return err
 	}
 
-	vmdata.NoExec = util.ToBool(os.Getenv("RUNQ_NOEXEC"))
+	// runq_exec can be disabled globally in daemon.json via the "--noexec" flag
+	// or via the container env variable "RUNQ_NOEXEC" with a true value.
+	if vmdata.NoExec == false {
+		vmdata.NoExec = util.ToBool(os.Getenv("RUNQ_NOEXEC"))
+	}
 	if !vmdata.NoExec {
 		// CID (uint32) is taken from the first 8 characters of the Docker container ID.
 		// In the unlikely event that there is already a container with a container ID that

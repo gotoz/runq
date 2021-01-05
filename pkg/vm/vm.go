@@ -19,10 +19,9 @@ type Msgtype uint8
 
 // Message types
 const (
-	_       Msgtype = iota
-	Command         // command to execute
-	Signal          // IPC signal such as SIGTERM
-	Vmdata          // VM config data
+	_      Msgtype = iota
+	Signal         // IPC signal such as SIGTERM
+	Vmdata         // VM config data
 )
 
 // Msg defines the format of the data exchanged between proxy and init.

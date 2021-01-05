@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"encoding/binary"
 	"io"
 	"log"
@@ -14,10 +14,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const (
-	defaultBufSize = 4096
-	headerSize     = 4 + 1 // 4 byte payload zize + 1 byte message type
-)
+const headerSize = 4 + 1 // 4 byte payload size + 1 byte message type
 
 // AckChannel to send acknowledge messages to proxy.
 // MsgChannel to receive messages from proxy.
@@ -42,43 +39,25 @@ func mkChannel(path string) (chan uint8, <-chan vm.Msg, error) {
 
 	go func() {
 		for {
-			var writeBuf bytes.Buffer
-			readBuf := make([]byte, headerSize)
-
-			_, err := io.ReadAtLeast(fd, readBuf, headerSize)
-			if err != nil {
+			// read header
+			buf := make([]byte, headerSize)
+			if _, err := io.ReadFull(fd, buf); err != nil {
 				log.Panic(err)
 			}
 
-			payloadSize := int(binary.BigEndian.Uint32(readBuf[:4]))
-			msgType := vm.Msgtype(readBuf[4])
+			payloadSize := int(binary.BigEndian.Uint32(buf[:4]))
+			msgType := vm.Msgtype(buf[4])
 
-			var totalRead int
-			for {
-				if totalRead == payloadSize {
-					break
-				}
-				if totalRead > payloadSize {
-					log.Panicf("totalRead:%d > payloadSize:%d", totalRead, payloadSize)
-				}
-
-				bufSize := payloadSize - totalRead
-				if bufSize > defaultBufSize {
-					bufSize = defaultBufSize
-				}
-
-				readBuf = make([]byte, bufSize)
-				n, err := fd.Read(readBuf)
-				if err != nil {
-					log.Panic(err)
-				}
-				writeBuf.Write(readBuf[:n])
-				totalRead += n
+			// read payload
+			buf = make([]byte, payloadSize)
+			rd := bufio.NewReaderSize(fd, payloadSize)
+			if _, err := io.ReadFull(rd, buf); err != nil {
+				log.Panic(err)
 			}
 
 			msgChan <- vm.Msg{
 				Type: msgType,
-				Data: writeBuf.Bytes(),
+				Data: buf,
 			}
 		}
 	}()

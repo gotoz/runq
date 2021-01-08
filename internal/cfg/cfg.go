@@ -24,7 +24,6 @@ var ReaperInterval = time.Second * 60
 var SysctlDefault = map[string]string{
 	"fs.file-max":                        "102400",
 	"kernel.panic_on_oops":               "1",
-	"kernel.threads-max":                 "100000",
 	"net.ipv6.conf.all.disable_ipv6":     "1",
 	"net.ipv6.conf.default.disable_ipv6": "1",
 	"vm.overcommit_memory":               "0",

@@ -22,7 +22,7 @@ var ReaperInterval = time.Second * 60
 
 // SysctlDefault defines default system settings.
 var SysctlDefault = map[string]string{
-	"fs.file-max":                        "102400",
+	"fs.file-max":                        "9223372036854775807", // max int64
 	"kernel.panic_on_oops":               "1",
 	"net.ipv6.conf.all.disable_ipv6":     "1",
 	"net.ipv6.conf.default.disable_ipv6": "1",

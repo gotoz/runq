@@ -203,15 +203,19 @@ func prepareRootdisk(vmdata *vm.Data) error {
 	if err != nil {
 		return err
 	}
-	if !diskIsEmpty {
-		return nil
-	}
 
 	args := []string{"/usr/bin/rsync", "-aRH"}
-	for _, d := range excl {
-		args = append(args, "--exclude", d)
+	if diskIsEmpty {
+		// new empty root disk, sync everything except explicitly excluded files
+		for _, d := range excl {
+			args = append(args, "--exclude", d)
+		}
+		args = append(args, "./")
+	} else {
+		// reuse existing rootdisk, sync only files managed by Docker
+		args = append(args, "./etc/hosts", "./etc/hostname", "./etc/resolv.conf")
 	}
-	args = append(args, "./", dest)
+	args = append(args, dest)
 
 	if err := os.Chdir(src); err != nil {
 		return fmt.Errorf("chdir to %s failed: %v ", src, err)

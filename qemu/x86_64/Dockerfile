@@ -25,7 +25,8 @@ RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
         qemu-kvm \
         rsync \
         wget \
-        xz-utils
+        xz-utils \
+        qemu-user-static
 
 RUN set -eu; \
     wget -q -O go.tar.gz $GO_URL; \
@@ -48,6 +49,7 @@ RUN    echo base  /lib/modules/*/kernel/fs/fscache/fscache.ko                   
     && echo base  /lib/modules/*/kernel/drivers/block/virtio_blk.ko                         >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/drivers/net/virtio_net.ko                           >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/drivers/char/hw_random/virtio-rng.ko                >> $QEMU_ROOT/kernel.conf \
+    && echo base  /lib/modules/*/kernel/fs/binfmt_misc.ko                                   >> $QEMU_ROOT/kernel.conf \
     && echo vsock /lib/modules/*/kernel/net/vmw_vsock/vsock.ko                              >> $QEMU_ROOT/kernel.conf \
     && echo vsock /lib/modules/*/kernel/net/vmw_vsock/vmw_vsock_virtio_transport_common.ko  >> $QEMU_ROOT/kernel.conf \
     && echo vsock /lib/modules/*/kernel/net/vmw_vsock/vmw_vsock_virtio_transport.ko         >> $QEMU_ROOT/kernel.conf \

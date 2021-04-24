@@ -60,10 +60,20 @@ func mountInitShare(source, target string) error {
 }
 
 func mountInitStage1(extraMounts []vm.Mount) error {
+	mounts := []vm.Mount{
+		{
+			Source: "binfmt_misc",
+			Target: "/proc/sys/fs/binfmt_misc",
+			Fstype: "binfmt_misc",
+			Flags:  unix.MS_NOSUID | unix.MS_NOEXEC | unix.MS_NODEV,
+		},
+	}
+
 	for i := range extraMounts {
 		extraMounts[i].Target = "/rootfs" + extraMounts[i].Target
+		mounts = append(mounts, extraMounts[i])
 	}
-	return mount(extraMounts...)
+	return mount(mounts...)
 }
 
 func mountEntrypointStage0() error {

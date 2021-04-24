@@ -146,6 +146,10 @@ func runInit() error {
 		return err
 	}
 
+	if err := registerBinfmtAArch64(); err != nil {
+		return err
+	}
+
 	if err := setSysctl(vmdata.Sysctl); err != nil {
 		return err
 	}
@@ -405,4 +409,19 @@ func setModprobe() error {
 		return err
 	}
 	return nil
+}
+
+func registerBinfmtAArch64() error {
+	const (
+		magic       = `\x7f\x45\x4c\x46\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\xb7\x00`
+		mask        = `\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff`
+		file        = "/proc/sys/fs/binfmt_misc/register"
+		name        = "qemu-aarch64"
+		interpreter = "/sbin/qemu-aarch64-static"
+		flags       = "F"
+		typ         = "M"
+	)
+
+	format := fmt.Sprintf(":%s:%s::%s:%s:%s:%s", name, typ, magic, mask, interpreter, flags)
+	return ioutil.WriteFile(file, []byte(format), 0)
 }

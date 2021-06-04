@@ -13,7 +13,7 @@ docker run \
     -d \
     -p $port:$port \
     $image  \
-    sh -c "echo $port | nc -l -p $port"
+    sh -c "nc -l -p $port"
 
 sleep 2
 
@@ -36,9 +36,9 @@ docker run \
     -d \
     -P \
     $image  \
-    sh -c "echo $port | nc -l -p $port"
+    sh -c "nc -l -p $port"
 
-host_port="$(docker port $name | awk -F: '{print $NF}')"
+host_port="$(docker port $name | grep -v ':::' | awk -F: '{print $NF}')"
 
 sleep 2
 

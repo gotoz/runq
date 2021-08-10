@@ -3,6 +3,7 @@ include make.rules
 SUBDIRS := cmd/proxy cmd/init cmd/runq cmd/runq-exec cmd/nsenter cmd/vsockd
 TARDIR := runq-$(GIT_COMMIT)
 TARFILE := $(TARDIR).tar.gz
+DOCKER_INIT := /usr/bin/docker-init
 
 .PHONY: all $(SUBDIRS) install image test tarfile release release-install clean distclean version
 
@@ -36,7 +37,7 @@ release: image
 	docker run \
 		--rm \
 		-v $(CURDIR):/runq \
-		-v /usr/bin/docker-init:/usr/bin/docker-init:ro \
+		-v $(DOCKER_INIT):/usr/bin/docker-init:ro \
 		$(BUILD_IMAGE) make clean install tarfile clean2
 
 release-install: $(TARFILE)

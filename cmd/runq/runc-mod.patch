@@ -1,8 +1,8 @@
 diff --git a/go.mod b/go.mod
-index 41cd5aa3..9ac76c05 100644
+index 71e83fe9..350f3c14 100644
 --- a/go.mod
 +++ b/go.mod
-@@ -10,6 +10,7 @@ require (
+@@ -11,6 +11,7 @@ require (
  	github.com/cyphar/filepath-securejoin v0.2.2
  	github.com/docker/go-units v0.4.0
  	github.com/godbus/dbus/v5 v5.0.4
@@ -12,7 +12,7 @@ index 41cd5aa3..9ac76c05 100644
  	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 @@ -26,3 +27,5 @@ require (
  	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
- 	google.golang.org/protobuf v1.25.0
+ 	google.golang.org/protobuf v1.26.0
  )
 +
 +replace github.com/gotoz/runq/pkg/vm => ./../pkg/vm
@@ -25,18 +25,6 @@ index 00000000..0df934e8
 +module github.com/gotoz/runq/pkg/vm
 +
 +go 1.14
-diff --git a/vendor/github.com/gotoz/runq/pkg/vm/go.sum b/vendor/github.com/gotoz/runq/pkg/vm/go.sum
-new file mode 100644
-index 00000000..3f058982
---- /dev/null
-+++ b/vendor/github.com/gotoz/runq/pkg/vm/go.sum
-@@ -0,0 +1,6 @@
-+github.com/vishvananda/netlink v1.1.0 h1:1iyaYNBLmP6L0220aDnYQpo1QEV4t4hJ+xEEhhJH8j0=
-+github.com/vishvananda/netlink v1.1.0/go.mod h1:cTgwzPIzzgDAYoQrMm0EdrjRUBkTqKYppBueQtXaqoE=
-+github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df h1:OviZH7qLw/7ZovXvuNyL3XQl8UFofeikI1NW1Gypu7k=
-+github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df/go.mod h1:JP3t17pCcGlemwknint6hfoeCVQrEMVwxRLRjXpq+BU=
-+golang.org/x/sys v0.0.0-20190606203320-7fc4e5ec1444 h1:/d2cWp6PSamH4jDPFLyO150psQdqvtoNX8Zjg3AQ31g=
-+golang.org/x/sys v0.0.0-20190606203320-7fc4e5ec1444/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 diff --git a/vendor/github.com/gotoz/runq/pkg/vm/vm.go b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
 new file mode 100644
 index 00000000..2a8acdb2
@@ -274,12 +262,12 @@ index 00000000..2a8acdb2
 +	return DecodeDataGob(res)
 +}
 diff --git a/vendor/modules.txt b/vendor/modules.txt
-index 5b9522f2..dcae5d55 100644
+index 69aa35dd..da61a53e 100644
 --- a/vendor/modules.txt
 +++ b/vendor/modules.txt
-@@ -23,6 +23,8 @@ github.com/docker/go-units
+@@ -25,6 +25,8 @@ github.com/docker/go-units
  github.com/godbus/dbus/v5
- # github.com/golang/protobuf v1.4.3
+ # github.com/golang/protobuf v1.5.0
  github.com/golang/protobuf/proto
 +# github.com/gotoz/runq/pkg/vm v0.0.0-00010101000000-000000000000 => ./../pkg/vm
 +github.com/gotoz/runq/pkg/vm

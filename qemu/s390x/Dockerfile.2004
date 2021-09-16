@@ -5,8 +5,8 @@ ENV RUNQ_ROOT /var/lib/runq
 ENV QEMU_ROOT /var/lib/runq/qemu
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV GO_URL https://golang.org/dl/go1.16.5.linux-s390x.tar.gz
-ENV GO_SHA256 21085f6a3568fae639edf383cce78bcb00d8f415e5e3d7feb04b6124e8e9efc1
+ENV GO_URL https://golang.org/dl/go1.17.1.linux-s390x.tar.gz
+ENV GO_SHA256 f770b72e1e1281239b12b64825f87a928a1788943c7f09cac7f28985ef2cf692
 ENV PATH /usr/local/go/bin:$PATH
 
 WORKDIR /runq

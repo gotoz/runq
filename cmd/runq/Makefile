@@ -4,6 +4,7 @@ EXTRA_LDFLAGS := "-X main.runqCommit=$(GIT_COMMIT)"
 
 all: $(RUNC_ROOT)/.git clean
 	git -C $(RUNC_ROOT) apply $(CURDIR)/runc.patch
+	git -C $(RUNC_ROOT) apply $(CURDIR)/runc-mod.patch
 	CC=gcc EXTRA_LDFLAGS=$(EXTRA_LDFLAGS) $(MAKE) -C $(RUNC_ROOT) BUILDTAGS="" runc
 	cp -f $(RUNC_ROOT)/runc $(CURDIR)/runq
 

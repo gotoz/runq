@@ -27,6 +27,7 @@ var (
 	gitCommit string        // set via Makefile
 	ackChan   chan uint8    // to send acknowledge messages back to proxy
 	msgChan   <-chan vm.Msg // to receives messages from proxy
+	_         = os.DirFS    // force Go compiler version >= 1.16
 )
 
 func init() {

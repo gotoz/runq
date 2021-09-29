@@ -219,13 +219,11 @@ func setIDs(uid, gid uint32, gids []uint32) error {
 			return fmt.Errorf("setgroups failed: %v", err)
 		}
 	}
-	_, _, errno := unix.RawSyscall(unix.SYS_SETGID, uintptr(gid), 0, 0)
-	if errno != 0 {
-		return fmt.Errorf("setgid failed: %v", os.NewSyscallError("SYS_SETGID", errno))
+	if err := syscall.Setgid(int(gid)); err != nil {
+		return fmt.Errorf("setgid failed: %v", err)
 	}
-	_, _, errno = unix.RawSyscall(unix.SYS_SETUID, uintptr(uid), 0, 0)
-	if errno != 0 {
-		return fmt.Errorf("setuid failed: %v", os.NewSyscallError("SYS_SETUID", errno))
+	if err := syscall.Setuid(int(uid)); err != nil {
+		return fmt.Errorf("setuid failed: %v", err)
 	}
 	return nil
 }

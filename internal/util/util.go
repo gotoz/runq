@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -97,33 +98,14 @@ func MajorMinor(path string) (int, int, error) {
 	return major, minor, nil
 }
 
-// UserHome returns the home directory for a given userid and the
-// location of passwd. It returns "/" if user cannot be found and on
-// any error.
+// UserHome returns the home directory for uid
+// or "/" if a home directory can't be found.
 func UserHome(uid int) string {
-	file, err := os.Open("/etc/passwd")
-	if err != nil {
+	u, err := user.LookupId(strconv.Itoa(uid))
+	if err != nil || u.HomeDir == "" {
 		return "/"
 	}
-	defer file.Close()
-
-	sc := bufio.NewScanner(file)
-	// 0    1        2   3   4     5         6
-	// name:password:UID:GID:GECOS:directory:shell
-	for sc.Scan() {
-		field := strings.Split(sc.Text(), ":")
-		if len(field) < 7 {
-			continue
-		}
-		uidInt, err := strconv.Atoi(field[2])
-		if err != nil {
-			continue
-		}
-		if uidInt == uid && field[5] != "" {
-			return field[5]
-		}
-	}
-	return "/"
+	return u.HomeDir
 }
 
 // Killall sends SIGKILL to all processes except init.

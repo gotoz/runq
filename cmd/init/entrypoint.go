@@ -92,6 +92,10 @@ func runEntrypoint() error {
 		}
 	}
 
+	if err = os.Chdir(entrypoint.Cwd); err != nil {
+		return err
+	}
+
 	if err := dropCapabilities(entrypoint.Capabilities); err != nil {
 		return err
 	}
@@ -105,10 +109,6 @@ func runEntrypoint() error {
 	}
 
 	if err := setIDs(entrypoint.UID, entrypoint.GID, entrypoint.AdditionalGids); err != nil {
-		return err
-	}
-
-	if err = os.Chdir(entrypoint.Cwd); err != nil {
 		return err
 	}
 

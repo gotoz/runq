@@ -38,7 +38,7 @@ Key differences to other hypervisor-based runtimes:
 runq requires a host kernel >= 4.8 with KVM and VHOST_VSOCK support enabled.
 The easiest way to build runq and to put all dependencies together is using Docker.
 For fast development cycles a regular build environment might be more
-efficient. For this refer to section *Developing runq* below.
+efficient. For this refer to section [Developing runq](#developing-runq).
 
 ```
 # get the runq and runc source code

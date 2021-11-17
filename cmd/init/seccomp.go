@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -97,9 +98,20 @@ func initSeccomp(seccompGob []byte) error {
 				return err
 			}
 
+			// The default errno for SCMP_ACT_ERRNO is EPERM which breaks the new
+			// syscall "clone3" used in latest glibc 2.34. ENOSYS is required for
+			// "clone3" to trigger the fallback to "clone". Unfortunately we don't get
+			// the errno from the OCI spec and therefore we have to set it manually
+			// for now. For details see
+			// https://github.com/moby/moby/issues/42680 and
+			// https://github.com/moby/moby/commit/9f6b562d
+			if name == "clone3" && sc.Action == "SCMP_ACT_ERRNO" {
+				action = action.SetReturnCode(int16(syscall.ENOSYS))
+			}
+
 			if len(sc.Args) == 0 {
 				if err := filter.AddRule(call, action); err != nil {
-					return errors.WithStack(err)
+					return errors.Wrapf(err, "filter.AddRule failed: syscall=%s", name)
 				}
 				continue
 			}
@@ -117,7 +129,7 @@ func initSeccomp(seccompGob []byte) error {
 				conditions = append(conditions, condition)
 			}
 			if err := filter.AddRuleConditional(call, action, conditions); err != nil {
-				return errors.WithStack(err)
+				return errors.Wrapf(err, "filter.AddRuleConditional failed: syscall=%s", name)
 			}
 		}
 	}

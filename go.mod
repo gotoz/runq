@@ -11,7 +11,7 @@ require (
 	github.com/opencontainers/runtime-spec v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/pmorjan/kmod v1.0.0
-	github.com/seccomp/libseccomp-golang v0.9.1
+	github.com/seccomp/libseccomp-golang v0.9.2-0.20211028222634-77bddc247e72
 	github.com/spf13/pflag v1.0.5
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
 	github.com/vishvananda/netlink v1.1.0

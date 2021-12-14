@@ -9,6 +9,7 @@
         "--dns-opts", "timeout:2",
         "--dns-search", "example.com",
         "--tmpfs", "/tmp,/var/tmp",
+        "--9pcache", "fscache",
         "--noexec",
         "--runqenv"
       ]

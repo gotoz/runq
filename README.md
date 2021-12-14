@@ -93,7 +93,7 @@ The entropy that's currently available can be checked with:
 ```
 cat /proc/sys/kernel/random/entropy_avail
 ```
-The number returned should always be greater than 1000. On s390x >=z14 random data is provided 
+The number returned should always be greater than 1000. On s390x >=z14 random data is provided
 by the hardware driven trng device (kernel module s390-trng).
 
 #### Kernel module vhost_vsock
@@ -172,6 +172,12 @@ the root directory of the container. This might be useful for containers running
 as entry point. This feature can be enabled globally by configuring `--runqenv` in
 [/etc/docker/daemon.json](test/testdata/daemon.json) or for a single container by setting
 the environment variable `RUNQ_RUNQENV` to a true value.
+
+### 9p cache mode
+The default 9p cache mode is 'mmap' but can be configured by setting the global
+runtime parameter `--9pcache` in [/etc/docker/daemon.json](test/testdata/daemon.json)
+or for each container individually by setting the container environment variable RUNQ_9PCACHE.
+Valid cache modes are none, loose, fscache and mmap. For details see [9prst.txt](https://www.kernel.org/doc/html/latest/_sources/filesystems/9p.rst.txt).
 
 ## runq Components
 ```

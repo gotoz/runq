@@ -123,14 +123,14 @@ func runInit() error {
 	// including /lib/modules.
 	// When using a rootdisk the 9pfs share contains only /lib/modules
 	if vmdata.Rootdisk == "" {
-		if err := mountInitShare("rootfs", "/rootfs"); err != nil {
+		if err := mountInitShare("rootfs", "/rootfs", vmdata.Cache9p); err != nil {
 			return err
 		}
 	} else {
 		if err := setupRootdisk(vmdata); err != nil {
 			return err
 		}
-		if err := mountInitShare("share", "/rootfs/lib/modules"); err != nil {
+		if err := mountInitShare("share", "/rootfs/lib/modules", vmdata.Cache9p); err != nil {
 			return err
 		}
 	}

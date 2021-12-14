@@ -11,10 +11,10 @@ index 6053ea97..ee6fdfdc 100644
  			return err
  		}
 diff --git a/main.go b/main.go
-index 328ea30c..e8cdfaad 100644
+index db29a8c1..80cd51f9 100644
 --- a/main.go
 +++ b/main.go
-@@ -114,6 +114,52 @@ func main() {
+@@ -112,6 +112,57 @@ func main() {
  			Value: "auto",
  			Usage: "ignore cgroup permission errors ('true', 'false', or 'auto')",
  		},
@@ -64,15 +64,20 @@ index 328ea30c..e8cdfaad 100644
 +			Name:  "runqenv",
 +			Usage: "enable writing of /.runqenv",
 +		},
++		cli.StringFlag{
++			Name:  "9pcache",
++			Value: "mmap",
++			Usage: "cache mode for 9p (none|loose|fscache|mmap)",
++		},
  	}
  	app.Commands = []cli.Command{
  		checkpointCommand,
 diff --git a/runq.go b/runq.go
 new file mode 100644
-index 00000000..de03235b
+index 00000000..aa0aecf8
 --- /dev/null
 +++ b/runq.go
-@@ -0,0 +1,562 @@
+@@ -0,0 +1,575 @@
 +package main
 +
 +import (
@@ -160,6 +165,7 @@ index 00000000..de03235b
 +		}
 +		dns.Server = append(dns.Server, v)
 +	}
++
 +	vmdata := vm.Data{
 +		ContainerID: strings.TrimSpace((context.Args()[0] + strings.Repeat(" ", 12))[:12]),
 +		CPU:         context.GlobalInt("cpu"),
@@ -237,6 +243,18 @@ index 00000000..de03235b
 +		UID:            spec.Process.User.UID,
 +		GID:            spec.Process.User.GID,
 +		AdditionalGids: spec.Process.User.AdditionalGids,
++	}
++
++	//
++	// 9p cache mode
++	//
++	if mode := strings.TrimSpace(context.GlobalString("9pcache")); mode != "" {
++		switch mode {
++		case "none", "loose", "fscache", "mmap":
++			vmdata.Cache9p = mode
++		default:
++			return fmt.Errorf("invalid 9p cache mode %q, want (none|loose|fscache|mmap)", mode)
++		}
 +	}
 +
 +	spec.Process.User.UID = 0
@@ -636,7 +654,7 @@ index 00000000..de03235b
 +	return major, minor, err
 +}
 diff --git a/utils.go b/utils.go
-index 85413c29..19c1cf0e 100644
+index f3244a49..1380b4b9 100644
 --- a/utils.go
 +++ b/utils.go
 @@ -76,6 +76,9 @@ func setupSpec(context *cli.Context) (*specs.Spec, error) {

@@ -342,6 +342,17 @@ func completeVmdata(vmdata *vm.Data) error {
 	}
 	vmdata.Entrypoint.Systemd = util.ToBool(os.Getenv("RUNQ_SYSTEMD"))
 
+	// https://www.kernel.org/doc/html/latest/_sources/filesystems/9p.rst.txt
+	// default 9p chache mode 'mmap' is set in runc
+	if val, ok = os.LookupEnv("RUNQ_9PCACHE"); ok {
+		switch val {
+		case "none", "loose", "fscache", "mmap":
+			vmdata.Cache9p = val
+		default:
+			return fmt.Errorf("env RUNQ_9PCACHE: invalid value %q, want (none|loose|fscache|mmap)", val)
+		}
+	}
+
 	arg0 := vmdata.Entrypoint.Args[0]
 	if arg0 == "/dev/init" {
 		if _, err := os.Stat(arg0); err == nil {

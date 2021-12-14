@@ -48,13 +48,13 @@ func mountInitStage0() error {
 	return mount(mounts...)
 }
 
-func mountInitShare(source, target string) error {
+func mountInitShare(source, target, cache9p string) error {
 	mnt := vm.Mount{
 		Source: source,
 		Target: target,
 		Fstype: "9p",
 		Flags:  unix.MS_NODEV | unix.MS_DIRSYNC,
-		Data:   "trans=virtio,cache=mmap",
+		Data:   "trans=virtio,cache=" + cache9p,
 	}
 	return mount(mnt)
 }

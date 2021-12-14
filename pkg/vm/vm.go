@@ -132,6 +132,7 @@ type DNS struct {
 // Data contains all data needed by the VM.
 type Data struct {
 	APDevice        string
+	Cache9p         string
 	ContainerID     string
 	CPU             int
 	Disks           []Disk

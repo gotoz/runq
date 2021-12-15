@@ -47,6 +47,13 @@ skip() {
     exit 0
 }
 
+skip_msg() {
+    local filename="$(basename $0)"
+    local comment="$1"
+    local reason="$2"
+    printf "test skipped  : %s [%s] : %s\n" $filename "$comment" "$reason"
+}
+
 myexit() {
     echo rc_exit=$rc_exit
     exit $rc_exit

@@ -62,6 +62,12 @@ func runEntrypoint() error {
 		if err := writeEnvfile(cfg.Envfile, entrypoint.Env); err != nil {
 			return err
 		}
+		if err := os.Chmod(cfg.Envfile, 0400); err != nil {
+			return fmt.Errorf("chmod %v failed: %v", cfg.Envfile, err)
+		}
+		if err := os.Chown(cfg.Envfile, int(entrypoint.UID), int(entrypoint.GID)); err != nil {
+			return fmt.Errorf("chown %v failed: %v", cfg.Envfile, err)
+		}
 	}
 
 	if !entrypoint.Systemd {

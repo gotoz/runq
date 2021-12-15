@@ -337,8 +337,9 @@ func completeVmdata(vmdata *vm.Data) error {
 		copy(vmdata.Vsockd.EntrypointEnv, vmdata.Entrypoint.Env)
 	}
 
-	vmdata.Entrypoint.Runqenv = util.ToBool(os.Getenv("RUNQ_RUNQENV"))
-
+	if val, ok = os.LookupEnv("RUNQ_RUNQENV"); ok {
+		vmdata.Entrypoint.Runqenv = util.ToBool(val)
+	}
 	vmdata.Entrypoint.Systemd = util.ToBool(os.Getenv("RUNQ_SYSTEMD"))
 
 	arg0 := vmdata.Entrypoint.Args[0]

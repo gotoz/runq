@@ -28,7 +28,7 @@ func qemuArgs(vmdata *vm.Data, socket, share string) ([]string, error) {
 		"-nodefaults",
 		"-name", vmdata.ContainerID[:12],
 		"-enable-kvm",
-		"-cpu", "host",
+		"-cpu", vmdata.CPUArgs,
 		"-vnc", "none",
 		"-display", "none",
 		"-no-reboot",

@@ -179,6 +179,13 @@ runtime parameter `--9pcache` in [/etc/docker/daemon.json](test/testdata/daemon.
 or for each container individually by setting the container environment variable RUNQ_9PCACHE.
 Valid cache modes are none, loose, fscache and mmap. For details see [9prst.txt](https://www.kernel.org/doc/html/latest/_sources/filesystems/9p.rst.txt).
 
+### Qemu CPU model and flags
+The default Qemu CPU model is 'host' with no flags (KVM processor with all supported host features) but can be
+configured by setting the global runtime parameter `--cpuargs` in [/etc/docker/daemon.json](test/testdata/daemon.json)
+or for each container individually by setting the container environment variable RUNQ_CPUARGS.
+E.g. `--env RUNQ_CPUARGS=host,rtm=off`.
+See `qemu-system-x86_64 -cpu help` for a list of available CPU models and CPUID flags.
+
 ## runq Components
 ```
    docker cli

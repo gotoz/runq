@@ -10,6 +10,7 @@
         "--dns-search", "example.com",
         "--tmpfs", "/tmp,/var/tmp",
         "--9pcache", "fscache",
+        "--cpuargs", "host,rtm=off",
         "--noexec",
         "--runqenv"
       ]

@@ -353,6 +353,14 @@ func completeVmdata(vmdata *vm.Data) error {
 		}
 	}
 
+	// default cpuargs 'host' is set in runc
+	if val, ok = os.LookupEnv("RUNQ_CPUARGS"); ok {
+		if val == "" {
+			return fmt.Errorf("env RUNQ_CPUARGS must not be empty")
+		}
+		vmdata.CPUArgs = val
+	}
+
 	arg0 := vmdata.Entrypoint.Args[0]
 	if arg0 == "/dev/init" {
 		if _, err := os.Stat(arg0); err == nil {

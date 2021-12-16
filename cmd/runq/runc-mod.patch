@@ -27,10 +27,10 @@ index 00000000..0df934e8
 +go 1.14
 diff --git a/vendor/github.com/gotoz/runq/pkg/vm/vm.go b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
 new file mode 100644
-index 00000000..ba4b633a
+index 00000000..5451782a
 --- /dev/null
 +++ b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
-@@ -0,0 +1,231 @@
+@@ -0,0 +1,232 @@
 +// Package vm defines data types and functions define and
 +// share data between the runtime runq, proxy and init.
 +package vm
@@ -168,6 +168,7 @@ index 00000000..ba4b633a
 +	Cache9p         string
 +	ContainerID     string
 +	CPU             int
++	CPUArgs         string
 +	Disks           []Disk
 +	DNS             DNS
 +	GitCommit       string

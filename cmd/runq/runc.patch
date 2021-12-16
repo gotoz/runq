@@ -11,10 +11,10 @@ index 6053ea97..ee6fdfdc 100644
  			return err
  		}
 diff --git a/main.go b/main.go
-index db29a8c1..80cd51f9 100644
+index db29a8c1..606d2c9b 100644
 --- a/main.go
 +++ b/main.go
-@@ -112,6 +112,57 @@ func main() {
+@@ -112,6 +112,62 @@ func main() {
  			Value: "auto",
  			Usage: "ignore cgroup permission errors ('true', 'false', or 'auto')",
  		},
@@ -69,15 +69,20 @@ index db29a8c1..80cd51f9 100644
 +			Value: "mmap",
 +			Usage: "cache mode for 9p (none|loose|fscache|mmap)",
 +		},
++		cli.StringFlag{
++			Name:  "cpuargs",
++			Value: "host",
++			Usage: "comma-separated list of cpu model and feature selection",
++		},
  	}
  	app.Commands = []cli.Command{
  		checkpointCommand,
 diff --git a/runq.go b/runq.go
 new file mode 100644
-index 00000000..aa0aecf8
+index 00000000..98be1496
 --- /dev/null
 +++ b/runq.go
-@@ -0,0 +1,575 @@
+@@ -0,0 +1,576 @@
 +package main
 +
 +import (
@@ -169,6 +174,7 @@ index 00000000..aa0aecf8
 +	vmdata := vm.Data{
 +		ContainerID: strings.TrimSpace((context.Args()[0] + strings.Repeat(" ", 12))[:12]),
 +		CPU:         context.GlobalInt("cpu"),
++		CPUArgs:     strings.Trim(strings.ReplaceAll(context.GlobalString("cpuargs"), " ", ""), ","),
 +		DNS:         dns,
 +		GitCommit:   runqCommit,
 +		Mem:         context.GlobalInt("mem"),

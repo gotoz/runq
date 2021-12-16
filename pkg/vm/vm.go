@@ -135,6 +135,7 @@ type Data struct {
 	Cache9p         string
 	ContainerID     string
 	CPU             int
+	CPUArgs         string
 	Disks           []Disk
 	DNS             DNS
 	GitCommit       string

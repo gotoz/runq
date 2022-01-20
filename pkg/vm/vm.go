@@ -14,6 +14,9 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
+// QemuMountPt is used to bind mount /var/lib/runq/qemu
+const QemuMountPt = "/.qemu.mnt"
+
 // Msgtype declares the type of a message.
 type Msgtype uint8
 

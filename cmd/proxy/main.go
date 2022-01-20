@@ -78,12 +78,12 @@ func run(vmdataB64 string) (int, error) {
 	}
 
 	for _, d := range []string{"/dev", "/proc", "/sys"} {
-		if err = unix.Mount(d, "/qemu"+d, "none", unix.MS_MOVE, ""); err != nil {
+		if err = unix.Mount(d, vm.QemuMountPt+d, "none", unix.MS_MOVE, ""); err != nil {
 			return 1, errors.WithStack(err)
 		}
 	}
 
-	if err = unix.PivotRoot("/qemu", "/qemu/rootfs"); err != nil {
+	if err = unix.PivotRoot(vm.QemuMountPt, vm.QemuMountPt+"/rootfs"); err != nil {
 		return 1, errors.WithStack(err)
 	}
 
@@ -324,13 +324,13 @@ func completeVmdata(vmdata *vm.Data) error {
 		if err != nil {
 			return err
 		}
-		if vmdata.Vsockd.CACert, err = ioutil.ReadFile("/qemu/certs/ca.pem"); err != nil {
+		if vmdata.Vsockd.CACert, err = ioutil.ReadFile(vm.QemuMountPt + "/certs/ca.pem"); err != nil {
 			return err
 		}
-		if vmdata.Vsockd.Cert, err = ioutil.ReadFile("/qemu/certs/cert.pem"); err != nil {
+		if vmdata.Vsockd.Cert, err = ioutil.ReadFile(vm.QemuMountPt + "/certs/cert.pem"); err != nil {
 			return err
 		}
-		if vmdata.Vsockd.Key, err = ioutil.ReadFile("/qemu/certs/key.pem"); err != nil {
+		if vmdata.Vsockd.Key, err = ioutil.ReadFile(vm.QemuMountPt + "/certs/key.pem"); err != nil {
 			return err
 		}
 		vmdata.Vsockd.EntrypointEnv = make([]string, len(vmdata.Entrypoint.Env))

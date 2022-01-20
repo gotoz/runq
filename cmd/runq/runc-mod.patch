@@ -27,10 +27,10 @@ index 00000000..0df934e8
 +go 1.14
 diff --git a/vendor/github.com/gotoz/runq/pkg/vm/vm.go b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
 new file mode 100644
-index 00000000..5451782a
+index 00000000..75364bbb
 --- /dev/null
 +++ b/vendor/github.com/gotoz/runq/pkg/vm/vm.go
-@@ -0,0 +1,232 @@
+@@ -0,0 +1,235 @@
 +// Package vm defines data types and functions define and
 +// share data between the runtime runq, proxy and init.
 +package vm
@@ -46,6 +46,9 @@ index 00000000..5451782a
 +
 +	"github.com/vishvananda/netlink"
 +)
++
++// QemuMountPt is used to bind mount /var/lib/runq/qemu
++const QemuMountPt = "/.qemu.mnt"
 +
 +// Msgtype declares the type of a message.
 +type Msgtype uint8

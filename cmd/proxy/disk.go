@@ -120,8 +120,8 @@ func updateDisks(disks []vm.Disk) error {
 
 // prepareRootdisk copies the content of the container root directory into a
 // bootdisk. The disk must have an empty ext2 or ext4 filesystem.
-// prepareRootdisk must run after pivot_root to /qemu so that the container
-// files are in /qemu/rootfs.
+// prepareRootdisk must run after pivot_root to /.qemu.mnt so that the container
+// files are in /.qemu.mnt/rootfs.
 func prepareRootdisk(vmdata *vm.Data) error {
 	var disk *vm.Disk
 	for _, d := range vmdata.Disks {
@@ -142,7 +142,7 @@ func prepareRootdisk(vmdata *vm.Data) error {
 		return fmt.Errorf("rootdisk %s: unsupported disktype", disk.Path)
 	}
 
-	excl := []string{"/dev", "/lib/modules", "/lost+found", "/proc", "/qemu", "/sys"}
+	excl := []string{"/dev", "/lib/modules", "/lost+found", "/proc", vm.QemuMountPt, "/sys"}
 	excl = append(excl, vmdata.RootdiskExclude...)
 
 	if disk.Fstype != "ext2" && disk.Fstype != "ext4" {

@@ -139,7 +139,7 @@ func runInit() error {
 	}
 
 	// Remove empty mountpoint.
-	if err := os.Remove("/rootfs/qemu"); err != nil && !os.IsNotExist(err) {
+	if err := os.RemoveAll("/rootfs" + vm.QemuMountPt); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -386,6 +386,7 @@ func shutdown(rc uint8, msg string) {
 		go func() {
 			util.SetSysctl("kernel.printk", "0")
 			util.Killall()
+			os.RemoveAll("/rootfs" + vm.QemuMountPt)
 			unix.Sync()
 			umountInit()
 			ch <- 1

@@ -33,9 +33,13 @@ func dropCapabilities(vmcaps vm.AppCapabilities) error {
 		return caps, nil
 	}
 
-	var minCaps = []string{"CAP_SETGID", "CAP_SETUID", "CAP_SYS_ADMIN"}
+	minCaps := []string{"CAP_SETGID", "CAP_SETUID", "CAP_SYS_ADMIN"}
 
-	p, err := capability.NewPid(0)
+	p, err := capability.NewPid2(0)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = p.Load()
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -19,8 +19,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/sys/unix"
+	"golang.org/x/term"
 )
 
 var (
@@ -114,7 +114,7 @@ func runInit() error {
 	}
 
 	if !vmdata.Entrypoint.Terminal {
-		if _, err := terminal.MakeRaw(0); err != nil {
+		if _, err := term.MakeRaw(0); err != nil {
 			return errors.WithStack(err)
 		}
 	}

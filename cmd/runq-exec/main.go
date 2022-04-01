@@ -18,7 +18,7 @@ import (
 	"github.com/gotoz/runq/internal/vs"
 	"github.com/mdlayher/vsock"
 	flag "github.com/spf13/pflag"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 var (
@@ -34,7 +34,7 @@ var (
 	version = flag.BoolP("version", "v", false, "Print version")
 
 	gitCommit     string
-	terminalState *terminal.State
+	terminalState *term.State
 )
 
 func init() {
@@ -74,7 +74,7 @@ func main() {
 
 	rc := run()
 	if terminalState != nil {
-		terminal.Restore(0, terminalState)
+		term.Restore(0, terminalState)
 	}
 	os.Exit(rc)
 }
@@ -192,7 +192,7 @@ func execute(done chan<- int, tlsConfig *tls.Config, cid uint32, jobid vs.JobID)
 	}
 
 	if *tty {
-		terminalState, _ = terminal.MakeRaw(0)
+		terminalState, _ = term.MakeRaw(0)
 	}
 	if *stdin {
 		go io.Copy(tlsConn, os.Stdin)
@@ -204,7 +204,7 @@ func execute(done chan<- int, tlsConfig *tls.Config, cid uint32, jobid vs.JobID)
 // given identifier by executing a REST API call to the Docker engine.
 func realContainerID(id string) (string, error) {
 	// re taken from: https://github.com/moby/moby/blob/master/daemon/names/names.go
-	var re = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)
+	re := regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)
 	if !re.MatchString(id) {
 		return "", fmt.Errorf("invalid container id %s", id)
 	}

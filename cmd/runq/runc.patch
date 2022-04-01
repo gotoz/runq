@@ -1,8 +1,8 @@
 diff --git a/exec.go b/exec.go
-index 6053ea97..ee6fdfdc 100644
+index 18c6bffd..4a64ecbd 100644
 --- a/exec.go
 +++ b/exec.go
-@@ -95,6 +95,7 @@ following will output a list of processes running in the container:
+@@ -97,6 +97,7 @@ following will output a list of processes running in the container:
  		},
  	},
  	Action: func(context *cli.Context) error {
@@ -11,10 +11,10 @@ index 6053ea97..ee6fdfdc 100644
  			return err
  		}
 diff --git a/main.go b/main.go
-index db29a8c1..0ea8bc98 100644
+index 4d666382..41ff7ece 100644
 --- a/main.go
 +++ b/main.go
-@@ -112,6 +112,62 @@ func main() {
+@@ -114,6 +114,62 @@ func main() {
  			Value: "auto",
  			Usage: "ignore cgroup permission errors ('true', 'false', or 'auto')",
  		},
@@ -659,10 +659,10 @@ index 00000000..c033e960
 +	return major, minor, err
 +}
 diff --git a/utils.go b/utils.go
-index f3244a49..1380b4b9 100644
+index 32ab33e5..ea83a520 100644
 --- a/utils.go
 +++ b/utils.go
-@@ -76,6 +76,9 @@ func setupSpec(context *cli.Context) (*specs.Spec, error) {
+@@ -78,6 +78,9 @@ func setupSpec(context *cli.Context) (*specs.Spec, error) {
  	if err != nil {
  		return nil, err
  	}

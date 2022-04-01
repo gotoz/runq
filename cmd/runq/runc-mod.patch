@@ -1,18 +1,18 @@
 diff --git a/go.mod b/go.mod
-index 71e83fe9..350f3c14 100644
+index f7a4e55f..7fef6e4e 100644
 --- a/go.mod
 +++ b/go.mod
-@@ -11,6 +11,7 @@ require (
- 	github.com/cyphar/filepath-securejoin v0.2.2
+@@ -10,6 +10,7 @@ require (
+ 	github.com/cyphar/filepath-securejoin v0.2.3
  	github.com/docker/go-units v0.4.0
- 	github.com/godbus/dbus/v5 v5.0.4
+ 	github.com/godbus/dbus/v5 v5.0.6
 +	github.com/gotoz/runq/pkg/vm v0.0.0-00010101000000-000000000000
- 	github.com/moby/sys/mountinfo v0.4.1
+ 	github.com/moby/sys/mountinfo v0.5.0
  	github.com/mrunalp/fileutils v0.5.0
  	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
-@@ -26,3 +27,5 @@ require (
- 	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
- 	google.golang.org/protobuf v1.26.0
+@@ -24,3 +25,5 @@ require (
+ 	golang.org/x/sys v0.0.0-20211116061358-0a5406a5449c
+ 	google.golang.org/protobuf v1.27.1
  )
 +
 +replace github.com/gotoz/runq/pkg/vm => ./../pkg/vm
@@ -267,15 +267,21 @@ index 00000000..75364bbb
 +	return DecodeDataGob(res)
 +}
 diff --git a/vendor/modules.txt b/vendor/modules.txt
-index 69aa35dd..da61a53e 100644
+index 17c69ef5..7a756137 100644
 --- a/vendor/modules.txt
 +++ b/vendor/modules.txt
-@@ -25,6 +25,8 @@ github.com/docker/go-units
+@@ -28,6 +28,9 @@ github.com/docker/go-units
+ # github.com/godbus/dbus/v5 v5.0.6
+ ## explicit
  github.com/godbus/dbus/v5
- # github.com/golang/protobuf v1.5.0
- github.com/golang/protobuf/proto
 +# github.com/gotoz/runq/pkg/vm v0.0.0-00010101000000-000000000000 => ./../pkg/vm
++## explicit
 +github.com/gotoz/runq/pkg/vm
- # github.com/moby/sys/mountinfo v0.4.1
+ # github.com/moby/sys/mountinfo v0.5.0
+ ## explicit
  github.com/moby/sys/mountinfo
- # github.com/mrunalp/fileutils v0.5.0
+@@ -101,3 +104,4 @@ google.golang.org/protobuf/reflect/protoreflect
+ google.golang.org/protobuf/reflect/protoregistry
+ google.golang.org/protobuf/runtime/protoiface
+ google.golang.org/protobuf/runtime/protoimpl
++# github.com/gotoz/runq/pkg/vm => ./../pkg/vm

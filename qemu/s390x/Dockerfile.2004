@@ -96,3 +96,6 @@ RUN cd $QEMU_ROOT \
     && ln -s usr/lib64 lib64 \
     && ln -s usr/lib lib \
     && ln -s usr/sbin sbin
+
+RUN    git config --global --add safe.directory /runq \
+    && git config --global --add safe.directory /runq/runc

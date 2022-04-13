@@ -84,3 +84,5 @@ RUN cp -a --parents \
     /usr/share/seabios \
     $QEMU_ROOT/
 
+RUN    git config --global --add safe.directory /runq \
+    && git config --global --add safe.directory /runq/runc

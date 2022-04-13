@@ -90,3 +90,5 @@ RUN cp -a --parents \
     /usr/share/qemu \
     $QEMU_ROOT/
 
+RUN    git config --global --add safe.directory /runq \
+    && git config --global --add safe.directory /runq/runc

@@ -106,7 +106,7 @@ func run() error {
 		ClientCAs:    certpool,
 	}
 
-	inner, err := vsock.Listen(vs.Port)
+	inner, err := vsock.Listen(vs.Port, nil)
 	if err != nil {
 		return fmt.Errorf("listen failed: %v", err)
 	}

@@ -110,7 +110,7 @@ func run() int {
 		return 1
 	}
 
-	conn, err := vsock.Dial(cid, vs.Port)
+	conn, err := vsock.Dial(cid, vs.Port, nil)
 	if err != nil {
 		log.Printf("failed to dial: %v", err)
 		return 1
@@ -169,7 +169,7 @@ func wait(done chan<- int, c *tls.Conn) {
 // execute creates a second vsock connection to execute the requested job inside the VM.
 // Incomming data is deliverd to STDOUT. STDIN is deliverd to the job process.
 func execute(done chan<- int, tlsConfig *tls.Config, cid uint32, jobid vs.JobID) {
-	conn, err := vsock.Dial(cid, vs.Port)
+	conn, err := vsock.Dial(cid, vs.Port, nil)
 	if err != nil {
 		log.Printf("failed to dial: %v", err)
 		done <- 1

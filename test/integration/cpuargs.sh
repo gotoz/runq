@@ -32,12 +32,7 @@ checkrc $? 0 "$comment"
 comment="set custom qemu cpu arguments"
 case "$(uname -m)" in
     s390x)
-        . /etc/lsb-release
-        if [ "$DISTRIB_CODENAME" = "bionic" ]; then
-            cpuargs="z13"
-        else
-            cpuargs="host,apqi=off"
-        fi
+        cpuargs="z13"
         ;;
     x86_64)
         cpuargs="host,rtm=off"

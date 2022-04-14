@@ -472,7 +472,7 @@ However to try out runq in a VM guest the (experimental) runq runtime configurat
 For fast development cycles runq can be build on the host as follows:
 1. Prerequisites:
 * Docker >= 19.03.x-ce
-* Go >= 1.16
+* Go >= 1.17
 * `/var/lib/runq` must be writable by the current user
 * [Libseccomp](https://github.com/seccomp/libseccomp/) static library.
 E.g. `libseccomp-dev` for Ubuntu or `libseccomp-static` for Fedora

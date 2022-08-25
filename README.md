@@ -153,15 +153,21 @@ docker run \
 ```
 
 ### Container with Systemd
-For containers that use Systemd as the Docker entry-point the container exit
-code must be treated differently to ensure that `poweroff` and `reboot` executed
-inside the container work as expected.
-```
-with --restart on-failure:1'
-poweroff, halt -> SIGINT(2) -> want container restart       -> exit code 0 (forced)
-reboot         -> SIGHUP(1) -> don't want container restart -> exit code 1
-```
-`-e RUNQ_SYSTEMD=1` also prevents runq from mounting cgroups.
+Containers running Systemd should have the environment variable `RUNQ_SYSTEMD` set to `1`.
+With `RUNQ_SYSTEMD=1` the behaviour changes as follows:
+
+- The entry-point return code (Systemd exit code) must be treated differently to ensure that
+  `poweroff` and `reboot` executed inside the container work as expected especially to
+   support Docker containers created with '--restart on-failure:1'. Therefore
+  - on **poweroff** and **halt** the Systemd exit code is 2 but the return code as seen by Docker is 0.
+  - In all other cases the return code as seen by Docker is 1.
+
+- When stopping or restarting a container the signal sent to the docker-entry point is
+  SIGTERM. Systemd usually ignores SIGTERM. In order to trigger a clean Systemd
+  shutdown the signal is therefore modified from SIGTERM to SIGRTMIN+4. When Systemd receives SIGRTMIN+4
+  it starts the poweroff.target unit.
+
+- With `RUNQ_SYSTEMD=1` Linux cgroups are not mounted because this will be done later by Systemd.
 
 See [test/examples/Dockerfile.systemd](test/examples/Dockerfile.systemd)
 and [test/examples/systemd.sh](test/examples/systemd.sh) for an example.

@@ -202,8 +202,13 @@ func runInit() error {
 		msg := <-msgChan
 		switch msg.Type {
 		case vm.Signal:
-			// Forward signal to application.
+			// Forward signal to the entrypoint.
+			// If signal is SIGTERM (e.g. via docker stop) and entrypoint is Systemd
+			// send signal SIGRTMIN+4 to trigger Systemd to start the poweroff.target unit.
 			sig := unix.Signal(int(msg.Data[0]))
+			if sig == unix.SIGTERM && vmdata.Entrypoint.Systemd {
+				sig = unix.Signal(0x26) // SIGRTMIN+4
+			}
 			if err := signalProcess(pidEntrypoint, sig); err != nil {
 				log.Printf("send signal %#v to %d: %v", sig, pidEntrypoint, err)
 			}

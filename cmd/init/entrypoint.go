@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
@@ -121,7 +122,7 @@ func runEntrypoint() error {
 	path, err := exec.LookPath(os.Args[1])
 	if err != nil {
 		fmt.Println(err)
-		if e, ok := err.(*exec.Error); ok && e.Err == os.ErrPermission {
+		if errors.Is(err, fs.ErrPermission) || errors.Is(err, syscall.EISDIR) {
 			os.Exit(126)
 		}
 		os.Exit(127)

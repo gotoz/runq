@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 ENV RUNC_ROOT /runq/runc
 ENV RUNQ_ROOT /var/lib/runq
@@ -22,7 +22,7 @@ RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
         libseccomp-dev \
         linux-virtual \
         pkg-config \
-        qemu-kvm \
+        qemu-system-x86 \
         rsync \
         wget \
         xz-utils
@@ -36,21 +36,24 @@ RUN set -eu; \
 RUN mkdir -p \
     $QEMU_ROOT/dev \
     $QEMU_ROOT/proc \
-    $QEMU_ROOT/lib \
     $QEMU_ROOT/rootfs \
     $QEMU_ROOT/share \
     $QEMU_ROOT/sys
 
 RUN    echo base  /lib/modules/*/kernel/fs/fscache/fscache.ko                                > $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/net/9p/9pnet.ko                                     >> $QEMU_ROOT/kernel.conf \
-    && echo base  /lib/modules/*/kernel/net/9p/9pnet_virtio.ko                              >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/fs/9p/9p.ko                                         >> $QEMU_ROOT/kernel.conf \
+    && echo base  /lib/modules/*/kernel/net/9p/9pnet.ko                                     >> $QEMU_ROOT/kernel.conf \
+    && echo base  /lib/modules/*/kernel/net/9p/9pnet_virtio.ko                              >> $QEMU_ROOT/kernel.conf \
+    && echo base  /lib/modules/*/kernel/net/core/failover.ko                                >> $QEMU_ROOT/kernel.conf \
+    && echo base  /lib/modules/*/kernel/drivers/net/net_failover.ko                         >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/drivers/block/virtio_blk.ko                         >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/drivers/net/virtio_net.ko                           >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/drivers/char/hw_random/virtio-rng.ko                >> $QEMU_ROOT/kernel.conf \
     && echo vsock /lib/modules/*/kernel/net/vmw_vsock/vsock.ko                              >> $QEMU_ROOT/kernel.conf \
     && echo vsock /lib/modules/*/kernel/net/vmw_vsock/vmw_vsock_virtio_transport_common.ko  >> $QEMU_ROOT/kernel.conf \
     && echo vsock /lib/modules/*/kernel/net/vmw_vsock/vmw_vsock_virtio_transport.ko         >> $QEMU_ROOT/kernel.conf \
+    && echo btrfs /lib/modules/*/kernel/lib/libcrc32c.ko                                    >> $QEMU_ROOT/kernel.conf \
     && echo btrfs /lib/modules/*/kernel/lib/raid6/raid6_pq.ko                               >> $QEMU_ROOT/kernel.conf \
     && echo btrfs /lib/modules/*/kernel/lib/zstd/zstd_compress.ko                           >> $QEMU_ROOT/kernel.conf \
     && echo btrfs /lib/modules/*/kernel/crypto/xor.ko                                       >> $QEMU_ROOT/kernel.conf \
@@ -61,28 +64,33 @@ RUN    echo base  /lib/modules/*/kernel/fs/fscache/fscache.ko                   
 RUN cp /boot/vmlinuz-*-generic $QEMU_ROOT/kernel
 
 RUN cp -d --preserve=all --parents \
-  /lib/x86_64-linux-gnu/* \
   /usr/lib/x86_64-linux-gnu/* \
   $QEMU_ROOT/ 2>&1 | grep -v 'omitting directory';:
 
-RUN cp -a --parents \
-    /etc/mtab \
-    /lib64 \
-    /lib/modules \
-    /sbin/e2fsck \
-    /sbin/fsck.ext2 \
-    /sbin/fsck.ext4 \
-    /sbin/mke2fs \
-    /sbin/mkfs.ext2 \
-    /sbin/mkfs.ext4 \
-    /usr/bin/qemu-system-x86_64 \
-    /usr/bin/rsync \
-    /usr/lib/ipxe \
-    /usr/lib/x86_64-linux-gnu/pulseaudio \
-    /usr/lib/x86_64-linux-gnu/qemu  \
-    /usr/share/qemu \
-    /usr/share/seabios \
-    $QEMU_ROOT/
+ RUN cp -a --parents \
+     /etc/mtab \
+     /usr/bin/qemu-system-x86_64 \
+     /usr/bin/rsync \
+     /usr/lib64/ld-linux-x86-64.so.2 \
+     /usr/lib/ipxe/qemu \
+     /usr/lib/modules \
+     /usr/lib/x86_64-linux-gnu/ceph \
+     /usr/lib/x86_64-linux-gnu/qemu \
+     /usr/sbin/e2fsck \
+     /usr/sbin/fsck.ext2 \
+     /usr/sbin/fsck.ext4 \
+     /usr/sbin/mke2fs \
+     /usr/sbin/mkfs.ext2 \
+     /usr/sbin/mkfs.ext4 \
+     /usr/share/qemu \
+     /usr/share/seabios \
+     $QEMU_ROOT/
+
+RUN cd $QEMU_ROOT \
+    && ln -s usr/bin bin \
+    && ln -s usr/lib64 lib64 \
+    && ln -s usr/lib lib \
+    && ln -s usr/sbin sbin
 
 RUN    git config --global --add safe.directory /runq \
     && git config --global --add safe.directory /runq/runc

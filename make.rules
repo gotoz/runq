@@ -14,4 +14,4 @@ ARCH := $(shell uname -m)
 GIT_SHA1 := $(shell git rev-parse --short HEAD)
 GIT_COMMIT := $(if $(shell git status --porcelain --untracked-files=no | grep -v 'M runc'),$(GIT_SHA1)+,$(GIT_SHA1))
 
-BUILD_IMAGE := runq-build-1804
+BUILD_IMAGE := runq-build-2004

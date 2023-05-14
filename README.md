@@ -314,7 +314,7 @@ Example:
 
 runq runs Qemu and Linux Kernel from the `/var/lib/runq/qemu` directory
 on the host. This directory is populated by `make -C qemu`. For simplicity
-Qemu and the Linux kernel are taken from the Ubuntu 18.04 LTS Docker base image.
+Qemu and the Linux kernel are taken from the Ubuntu 20.04 LTS Docker base image.
 See [qemu/x86_64/Dockerfile](qemu/x86_64/Dockerfile) for details.
 This makes runq independent of the Linux distribution on the host.
 Qemu does not need to be installed on the host.
@@ -531,7 +531,7 @@ For fast development cycles runq can be build on the host as follows:
 1. Prerequisites:
 
     * Docker >= 19.03.x-ce
-    * Go >= 1.19
+    * Go >= 1.20
     * `/var/lib/runq` must be writable by the current user
     * [Libseccomp](https://github.com/seccomp/libseccomp/) static library.
     E.g. `libseccomp-dev` for Ubuntu or `libseccomp-static` for Fedora
@@ -543,7 +543,7 @@ For fast development cycles runq can be build on the host as follows:
     ```
 
 1. Install Qemu and guest kernel to `/var/lib/runq/qemu`.
-   All files are taken from the Ubuntu 18.04 LTS Docker base image. (`/var/lib/runq` must be writeable by the current user.)
+   All files are taken from the Ubuntu 20.04 LTS Docker base image. (`/var/lib/runq` must be writeable by the current user.)
 
     ```sh
     cd runq

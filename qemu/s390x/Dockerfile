@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 ENV RUNC_ROOT /runq/runc
 ENV RUNQ_ROOT /var/lib/runq
@@ -23,7 +23,7 @@ RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
         linux-image-virtual \
         linux-image-extra-virtual \
         pkg-config \
-        qemu-kvm \
+        qemu-system-s390x \
         rsync \
         wget \
         xz-utils
@@ -37,25 +37,29 @@ RUN set -eu; \
 RUN mkdir -p \
     $QEMU_ROOT/dev \
     $QEMU_ROOT/proc \
-    $QEMU_ROOT/lib \
     $QEMU_ROOT/rootfs \
     $QEMU_ROOT/share \
     $QEMU_ROOT/sys
 
 RUN    echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                               >  $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/net/9p/9pnet.ko                                     >> $QEMU_ROOT/kernel.conf \
-    && echo base   /lib/modules/*/kernel/net/9p/9pnet_virtio.ko                              >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/fs/9p/9p.ko                                         >> $QEMU_ROOT/kernel.conf \
+    && echo base   /lib/modules/*/kernel/net/9p/9pnet_virtio.ko                              >> $QEMU_ROOT/kernel.conf \
+    && echo base   /lib/modules/*/kernel/net/core/failover.ko                                >> $QEMU_ROOT/kernel.conf \
+    && echo base   /lib/modules/*/kernel/drivers/net/net_failover.ko                         >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/drivers/block/virtio_blk.ko                         >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/drivers/net/virtio_net.ko                           >> $QEMU_ROOT/kernel.conf \
     && echo vsock  /lib/modules/*/kernel/net/vmw_vsock/vsock.ko                              >> $QEMU_ROOT/kernel.conf \
     && echo vsock  /lib/modules/*/kernel/net/vmw_vsock/vmw_vsock_virtio_transport_common.ko  >> $QEMU_ROOT/kernel.conf \
     && echo vsock  /lib/modules/*/kernel/net/vmw_vsock/vmw_vsock_virtio_transport.ko         >> $QEMU_ROOT/kernel.conf \
+    && echo btrfs  /lib/modules/*/kernel/arch/s390/crypto/crc32-vx_s390.ko                   >> $QEMU_ROOT/kernel.conf \
+    && echo btrfs  /lib/modules/*/kernel/lib/libcrc32c.ko                                    >> $QEMU_ROOT/kernel.conf \
     && echo btrfs  /lib/modules/*/kernel/lib/raid6/raid6_pq.ko                               >> $QEMU_ROOT/kernel.conf \
     && echo btrfs  /lib/modules/*/kernel/lib/zlib_deflate/zlib_deflate.ko                    >> $QEMU_ROOT/kernel.conf \
     && echo btrfs  /lib/modules/*/kernel/lib/zstd/zstd_compress.ko                           >> $QEMU_ROOT/kernel.conf \
     && echo btrfs  /lib/modules/*/kernel/crypto/xor.ko                                       >> $QEMU_ROOT/kernel.conf \
     && echo btrfs  /lib/modules/*/kernel/fs/btrfs/btrfs.ko                                   >> $QEMU_ROOT/kernel.conf \
+    && echo xfs    /lib/modules/*/kernel/arch/s390/crypto/crc32-vx_s390.ko                   >> $QEMU_ROOT/kernel.conf \
     && echo xfs    /lib/modules/*/kernel/lib/libcrc32c.ko                                    >> $QEMU_ROOT/kernel.conf \
     && echo xfs    /lib/modules/*/kernel/fs/xfs/xfs.ko                                       >> $QEMU_ROOT/kernel.conf \
     && echo zcrypt /lib/modules/*/kernel/drivers/s390/crypto/zcrypt.ko                       >> $QEMU_ROOT/kernel.conf \
@@ -64,31 +68,34 @@ RUN    echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                  
     && echo z14+   /lib/modules/*/kernel/drivers/char/hw_random/s390-trng.ko                 >> $QEMU_ROOT/kernel.conf
 
 
-ADD extract-vmlinux.sh /extract-vmlinux.sh
-
-RUN /extract-vmlinux.sh /boot/vmlinuz-*-generic $QEMU_ROOT/kernel
+RUN cp /boot/vmlinuz-*-generic $QEMU_ROOT/kernel
 
 RUN cp -d --preserve=all --parents \
-    /lib/s390x-linux-gnu/* \
     /usr/lib/s390x-linux-gnu/* \
     $QEMU_ROOT/ 2>&1 | grep -v 'omitting directory';:
 
-RUN cp -a --parents \
-    /etc/mtab \
-    /lib/ld64.so.1 \
-    /lib/modules \
-    /sbin/e2fsck \
-    /sbin/fsck.ext2 \
-    /sbin/fsck.ext4 \
-    /sbin/mke2fs \
-    /sbin/mkfs.ext2 \
-    /sbin/mkfs.ext4 \
-    /usr/bin/qemu-system-s390x \
-    /usr/bin/rsync \
-    /usr/lib/s390x-linux-gnu/pulseaudio \
-    /usr/lib/s390x-linux-gnu/qemu \
-    /usr/share/qemu \
-    $QEMU_ROOT/
+ RUN cp -a --parents \
+     /etc/mtab \
+     /usr/bin/qemu-system-s390x \
+     /usr/bin/rsync \
+     /usr/lib/ld64.so.1 \
+     /usr/lib/modules \
+     /usr/lib/s390x-linux-gnu/ceph \
+     /usr/lib/s390x-linux-gnu/qemu \
+     /usr/sbin/e2fsck \
+     /usr/sbin/fsck.ext2 \
+     /usr/sbin/fsck.ext4 \
+     /usr/sbin/mke2fs \
+     /usr/sbin/mkfs.ext2 \
+     /usr/sbin/mkfs.ext4 \
+     /usr/share/qemu \
+     $QEMU_ROOT/
+
+RUN cd $QEMU_ROOT \
+    && ln -s usr/bin bin \
+    && ln -s usr/lib64 lib64 \
+    && ln -s usr/lib lib \
+    && ln -s usr/sbin sbin
 
 RUN    git config --global --add safe.directory /runq \
     && git config --global --add safe.directory /runq/runc

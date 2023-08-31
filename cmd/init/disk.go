@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -87,13 +86,14 @@ func setupRootdisk(vmdata *vm.Data) error {
 
 // findDisk searches for a block device in sysfs for a given serial number.
 func findDisk(serial string) (string, error) {
-	files, err := ioutil.ReadDir("/sys/block")
+	files, err := os.ReadDir("/sys/block")
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
 
 	for _, f := range files {
-		if f.Mode()&os.ModeSymlink == 0 {
+		fi, _ := f.Info()
+		if fi.Mode()&os.ModeSymlink == 0 {
 			continue
 		}
 		if !strings.HasPrefix(f.Name(), "vd") {
@@ -101,7 +101,7 @@ func findDisk(serial string) (string, error) {
 		}
 
 		path := filepath.Join("/sys/block", f.Name(), "serial")
-		buf, err := ioutil.ReadFile(path)
+		buf, err := os.ReadFile(path)
 		if err != nil {
 			return "", errors.WithStack(err)
 		}

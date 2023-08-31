@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -165,7 +164,7 @@ func writeResolvConf(dns vm.DNS) error {
 			return err
 		}
 	}
-	if err := ioutil.WriteFile(file, []byte(str), 0444); err != nil {
+	if err := os.WriteFile(file, []byte(str), 0444); err != nil {
 		return err
 	}
 	return os.Chmod(file, 0444)

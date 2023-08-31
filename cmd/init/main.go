@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -191,7 +190,7 @@ func runInit() error {
 		if err != nil {
 			shutdown(util.ErrorToRc(err))
 		}
-		if err := ioutil.WriteFile(fmt.Sprintf("/proc/%d/oom_score_adj", vsockd.Process.Pid), []byte("-1000"), 0644); err != nil {
+		if err := os.WriteFile(fmt.Sprintf("/proc/%d/oom_score_adj", vsockd.Process.Pid), []byte("-1000"), 0644); err != nil {
 			shutdown(1, "can't adjust oom score of vsockd")
 		}
 		go wait4Vsockd(vsockd.Process.Pid)
@@ -274,10 +273,10 @@ func signalProcess(pid int, sig unix.Signal) error {
 }
 
 func vportDevice() (string, error) {
-	var vports []os.FileInfo
+	var vports []os.DirEntry
 	var err error
 	for i := 0; i < 100; i++ {
-		vports, err = ioutil.ReadDir("/sys/class/virtio-ports")
+		vports, err = os.ReadDir("/sys/class/virtio-ports")
 		if len(vports) == 1 {
 			break
 		}

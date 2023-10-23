@@ -106,7 +106,7 @@ index 00000000..c033e960
 +)
 +
 +const (
-+	runqOciVersion = "1.0"
++	runqOciVersion = "1."
 +	runqStartcmd   = vm.QemuMountPt + "/proxy"
 +)
 +

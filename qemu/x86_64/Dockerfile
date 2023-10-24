@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ENV RUNC_ROOT /runq/runc
 ENV RUNQ_ROOT /var/lib/runq
@@ -41,7 +41,9 @@ RUN mkdir -p \
     $QEMU_ROOT/share \
     $QEMU_ROOT/sys
 
-RUN    echo base  /lib/modules/*/kernel/fs/fscache/fscache.ko                                > $QEMU_ROOT/kernel.conf \
+# netfs/netfs.ko
+RUN    echo base  /lib/modules/*/kernel/fs/netfs/netfs.ko                                    > $QEMU_ROOT/kernel.conf \
+    && echo base  /lib/modules/*/kernel/fs/fscache/fscache.ko                               >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/net/9p/9pnet.ko                                     >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/fs/9p/9p.ko                                         >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/net/9p/9pnet.ko                                     >> $QEMU_ROOT/kernel.conf \
@@ -74,7 +76,6 @@ RUN cp -d --preserve=all --parents \
      /usr/lib64/ld-linux-x86-64.so.2 \
      /usr/lib/ipxe/qemu \
      /usr/lib/modules \
-     /usr/lib/x86_64-linux-gnu/ceph \
      /usr/lib/x86_64-linux-gnu/qemu \
      /usr/sbin/e2fsck \
      /usr/sbin/fsck.ext2 \

@@ -11,6 +11,7 @@ ENV PATH /usr/local/go/bin:$PATH
 
 WORKDIR /runq
 
+RUN ln -sf /proc/mounts:/etc/mtab
 RUN echo "do_initrd = no" >> /etc/kernel-img.conf \
     && apt-get update \
     && apt-get install -y --no-install-recommends \

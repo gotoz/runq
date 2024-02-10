@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/gotoz/runq/internal/cfg"
 	"github.com/gotoz/runq/pkg/vm"
@@ -17,11 +16,6 @@ func qemuArgs(vmdata *vm.Data, socket, share string) ([]string, error) {
 	if vmdata.NestedVM {
 		cpuArgs = ",pmu=off"
 		virtioArgs = ",disable-modern=true"
-	}
-
-	var shareArgs string
-	if strings.HasPrefix(vmdata.QemuVersion, "4") {
-		shareArgs = ",multidevs=remap"
 	}
 
 	args := []string{
@@ -44,7 +38,7 @@ func qemuArgs(vmdata *vm.Data, socket, share string) ([]string, error) {
 		"-kernel", "/kernel",
 		"-initrd", "/initrd",
 		"-msg", "timestamp=on",
-		"-fsdev", "local,id=share,path=" + share + ",security_model=none" + shareArgs,
+		"-fsdev", "local,id=share,path=" + share + ",security_model=none,multidevs=remap",
 		"-chardev", "socket,path=" + socket + ",id=channel1",
 		"-device", "virtserialport,chardev=channel1,name=com.ibm.runq.channel.1",
 		"-smp", strconv.Itoa(vmdata.CPU),

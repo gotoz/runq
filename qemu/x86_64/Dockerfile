@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ENV RUNC_ROOT /runq/runc
 ENV RUNQ_ROOT /var/lib/runq
@@ -35,12 +35,15 @@ RUN set -eu; \
 
 RUN mkdir -p \
     $QEMU_ROOT/dev \
+    $QEMU_ROOT/etc \
     $QEMU_ROOT/proc \
     $QEMU_ROOT/rootfs \
     $QEMU_ROOT/share \
     $QEMU_ROOT/sys
 
-RUN    echo base  /lib/modules/*/kernel/fs/fscache/fscache.ko                                > $QEMU_ROOT/kernel.conf \
+# netfs/netfs.ko
+RUN    echo base  /lib/modules/*/kernel/fs/netfs/netfs.ko                                    > $QEMU_ROOT/kernel.conf \
+    && echo base  /lib/modules/*/kernel/fs/fscache/fscache.ko                               >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/net/9p/9pnet.ko                                     >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/fs/9p/9p.ko                                         >> $QEMU_ROOT/kernel.conf \
     && echo base  /lib/modules/*/kernel/net/9p/9pnet.ko                                     >> $QEMU_ROOT/kernel.conf \
@@ -68,13 +71,11 @@ RUN cp -d --preserve=all --parents \
   $QEMU_ROOT/ 2>&1 | grep -v 'omitting directory';:
 
  RUN cp -a --parents \
-     /etc/mtab \
      /usr/bin/qemu-system-x86_64 \
      /usr/bin/rsync \
      /usr/lib64/ld-linux-x86-64.so.2 \
      /usr/lib/ipxe/qemu \
      /usr/lib/modules \
-     /usr/lib/x86_64-linux-gnu/ceph \
      /usr/lib/x86_64-linux-gnu/qemu \
      /usr/sbin/e2fsck \
      /usr/sbin/fsck.ext2 \
@@ -87,6 +88,7 @@ RUN cp -d --preserve=all --parents \
      $QEMU_ROOT/
 
 RUN cd $QEMU_ROOT \
+    && ln -s ../proc/self/mounts etc/mtab \
     && ln -s usr/bin bin \
     && ln -s usr/lib64 lib64 \
     && ln -s usr/lib lib \

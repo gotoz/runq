@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -58,7 +57,7 @@ func Mknod(path, devtype string, fmode uint32, major, minor int) error {
 // SetSysctl sets a syscontrol.
 func SetSysctl(name string, value string) error {
 	path := "/proc/sys/" + strings.Replace(name, ".", "/", -1)
-	if err := ioutil.WriteFile(path, []byte(value), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(value), 0644); err != nil {
 		return fmt.Errorf("WriteFile %s failed: %v", path, err)
 	}
 	return nil
@@ -86,7 +85,7 @@ func DirExists(path string) bool {
 func MajorMinor(path string) (int, int, error) {
 	// cat /sys/class/virtio-ports/vport0p1/dev
 	// 252:1
-	buf, err := ioutil.ReadFile(path)
+	buf, err := os.ReadFile(path)
 	if err != nil {
 		return 0, 0, fmt.Errorf("ReadFile %s failed: %v", path, err)
 	}
@@ -126,7 +125,7 @@ func Killall() {
 			return filepath.SkipDir
 		}
 		// ignore kernel threads
-		buf, _ := ioutil.ReadFile(fmt.Sprintf("/proc/%s/cmdline", f.Name()))
+		buf, _ := os.ReadFile(fmt.Sprintf("/proc/%s/cmdline", f.Name()))
 		if len(buf) == 0 {
 			return filepath.SkipDir
 		}

@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -32,7 +32,7 @@ func runEntrypoint() error {
 	if rd == nil {
 		return errors.New("rd == nil")
 	}
-	buf, err := ioutil.ReadAll(rd)
+	buf, err := io.ReadAll(rd)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -256,5 +256,5 @@ func writeEnvfile(path string, env []string) error {
 			return errors.WithStack(err)
 		}
 	}
-	return errors.WithStack(ioutil.WriteFile(path, buf.Bytes(), 0444))
+	return errors.WithStack(os.WriteFile(path, buf.Bytes(), 0444))
 }

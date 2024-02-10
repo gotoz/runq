@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -324,13 +323,13 @@ func completeVmdata(vmdata *vm.Data) error {
 		if err != nil {
 			return err
 		}
-		if vmdata.Vsockd.CACert, err = ioutil.ReadFile(vm.QemuMountPt + "/certs/ca.pem"); err != nil {
+		if vmdata.Vsockd.CACert, err = os.ReadFile(vm.QemuMountPt + "/certs/ca.pem"); err != nil {
 			return err
 		}
-		if vmdata.Vsockd.Cert, err = ioutil.ReadFile(vm.QemuMountPt + "/certs/cert.pem"); err != nil {
+		if vmdata.Vsockd.Cert, err = os.ReadFile(vm.QemuMountPt + "/certs/cert.pem"); err != nil {
 			return err
 		}
-		if vmdata.Vsockd.Key, err = ioutil.ReadFile(vm.QemuMountPt + "/certs/key.pem"); err != nil {
+		if vmdata.Vsockd.Key, err = os.ReadFile(vm.QemuMountPt + "/certs/key.pem"); err != nil {
 			return err
 		}
 		vmdata.Vsockd.EntrypointEnv = make([]string, len(vmdata.Entrypoint.Env))

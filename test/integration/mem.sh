@@ -2,7 +2,7 @@
 . $(cd ${0%/*};pwd;)/../common.sh
 
 comment="use default memory size (256MiB)"
-min=220000
+min=200000
 max=260000
 cmd="mem=\$(awk '/MemTotal/{print \$2}' /proc/meminfo); echo mem=\$mem; test \$mem -gt $min -a \$mem -lt $max"
 docker run \

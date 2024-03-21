@@ -1,7 +1,6 @@
 #!/bin/bash
 . $(cd ${0%/*};pwd;)/../common.sh
 
-set -x
 test $UID -eq 0 || skip "reason: not running as root"
 command -v qemu-img || skip "reason: qemu-img not found"
 command -v qemu-nbd || skip "reason: qemu-nbd not found"

@@ -45,7 +45,7 @@ docker run \
     --rm \
     -e RUNQ_CPU=2 \
     $image \
-        sh -c "mknod -m 0600 /loop0 b 7 0"
+        sh -c "mknod -m 0600 /tmp/loop0 b 7 0"
 
 checkrc $? 0 "$comment"
 
@@ -60,7 +60,7 @@ docker run \
     --cap-drop mknod \
     -e RUNQ_CPU=2 \
     $image \
-        sh -c "mknod -m 0600 /loop0 b 7 0"
+        sh -c "mknod -m 0600 /tmp/loop0 b 7 0"
 
 checkrc $? 1 "$comment"
 

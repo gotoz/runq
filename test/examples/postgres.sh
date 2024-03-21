@@ -6,7 +6,7 @@ disk=$PWD/disk$$
 image=postgres:alpine
 PGPASSWORD=mysecretpassword
 
-dd if=/dev/zero of=$disk bs=1M count=200 >/dev/null
+dd if=/dev/zero of=$disk bs=1M count=512 >/dev/null
 mkfs.ext4 -F $disk
 
 cleanup() {
@@ -22,8 +22,9 @@ docker run \
     --name $name \
     -e RUNQ_MEM=512 \
     -e RUNQ_CPU=2 \
+    -e RUNQ_ROOTDISK=0001 \
     -e POSTGRES_PASSWORD=$PGPASSWORD \
-    -v $disk:/dev/runq/$(uuid)/none/ext4/var/lib/postgresql \
+    -v $disk:/dev/runq/0001/none/ext4 \
     -d \
     $image
 

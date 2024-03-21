@@ -1,11 +1,11 @@
 #!/bin/bash
 . $(cd ${0%/*};pwd;)/../common.sh
 
-image=docker:18.06-dind
+image=docker:20.10-dind
 port=$(rand_port)
 name=$(rand_name)
 disk=$PWD/disk$$
-dd if=/dev/zero of=$disk bs=1M count=100 >/dev/null
+dd if=/dev/zero of=$disk bs=1M count=512 >/dev/null
 mkfs.ext4 -F $disk
 
 cleanup() {
@@ -21,10 +21,11 @@ docker run \
     --runtime runq \
     -e RUNQ_CPU=2 \
     -e RUNQ_MEM=1024 \
+    -e RUNQ_ROOTDISK=0001 \
     -p $port:2375 \
     --name $name \
     -d \
-    --volume $disk:/dev/runq/$(uuid)/none/ext4/docker \
+    --volume $disk:/dev/runq/0001/none/ext4 \
     --security-opt seccomp=unconfined \
     --cap-add net_admin \
     --cap-add sys_admin \
@@ -32,13 +33,13 @@ docker run \
     --cap-add sys_resource \
     $image \
     dockerd \
-        --data-root /docker \
         -s overlay2 \
         --host=tcp://0.0.0.0:2375
 
 # wait for dind to show up
-for ((i=1;i<20;i++)); do
-    sleep .5
+for ((i=1;i<30;i++)); do
+    sleep 1
+    echo "$i please wait ..."
     if docker -H tcp://localhost:$port ps &>/dev/null; then
         break
     fi

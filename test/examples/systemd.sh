@@ -24,6 +24,6 @@ docker run \
     --runtime runq \
     --cap-add all \
     --security-opt seccomp=unconfined \
-    systemd /sbin/init
+    systemd /usr/bin/systemd
 
 checkrc $? 0 "systemd exit code rc=0"

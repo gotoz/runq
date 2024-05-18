@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"net"
 
 	"github.com/gotoz/runq/pkg/vm"
-	"github.com/pkg/errors"
 )
 
 const defaultBufSize = 4096
@@ -20,7 +20,7 @@ func mkChannel(sock string) (chan<- vm.Msg, <-chan int, error) {
 
 	l, err := net.Listen("unix", sock)
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, nil, fmt.Errorf("mkChannel net.Listen() failed: %w", err)
 	}
 
 	go func() {

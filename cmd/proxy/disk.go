@@ -13,17 +13,16 @@ import (
 	"github.com/gotoz/runq/internal/loopback"
 	"github.com/gotoz/runq/internal/util"
 	"github.com/gotoz/runq/pkg/vm"
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
-// disktype detects the type of a disk at the given path
+// disktype detects the type of a disk at the given path.
 func disktype(path string) (vm.Disktype, error) {
 	qcowMagic := []byte{0x51, 0x46, 0x49, 0xfb}
 
 	fileInfo, err := os.Stat(path)
 	if err != nil {
-		return 0, errors.WithStack(err)
+		return 0, fmt.Errorf("disktype os.Stat(%s) failed: %v", path, err)
 	}
 	if fileInfo.Mode()&os.ModeDevice > 0 {
 		return vm.BlockDevice, nil
@@ -196,7 +195,7 @@ func prepareRootdisk(vmdata *vm.Data) error {
 		if err := unix.Unmount(dest, unix.MNT_DETACH); err != nil {
 			log.Printf("umount rootdisk failed: %v", err)
 		}
-		os.Remove(dest)
+		_ = os.Remove(dest)
 	}()
 
 	diskIsEmpty, err := dirIsEmpty(dest)

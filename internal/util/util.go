@@ -47,7 +47,7 @@ func Mknod(path, devtype string, fmode uint32, major, minor int) error {
 	umask := unix.Umask(0)
 	defer unix.Umask(umask)
 
-	dev := int(minor&0xfff00<<12 | major&0xfff<<8 | minor&0xff)
+	dev := minor&0xfff00<<12 | major&0xfff<<8 | minor&0xff
 	if err := unix.Mknod(path, mode, dev); err != nil {
 		return fmt.Errorf("Mknod %s failed: %v", path, err)
 	}
@@ -56,8 +56,8 @@ func Mknod(path, devtype string, fmode uint32, major, minor int) error {
 
 // SetSysctl sets a syscontrol.
 func SetSysctl(name string, value string) error {
-	path := "/proc/sys/" + strings.Replace(name, ".", "/", -1)
-	if err := os.WriteFile(path, []byte(value), 0644); err != nil {
+	path := "/proc/sys/" + strings.ReplaceAll(name, ".", "/")
+	if err := os.WriteFile(path, []byte(value), 0o644); err != nil {
 		return fmt.Errorf("WriteFile %s failed: %v", path, err)
 	}
 	return nil
@@ -109,7 +109,7 @@ func UserHome(uid int) string {
 
 // Killall sends SIGKILL to all processes except init.
 func Killall() {
-	filepath.Walk("/proc", func(path string, f os.FileInfo, err error) error {
+	err := filepath.Walk("/proc", func(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			log.Print(err)
 			return filepath.SkipDir
@@ -129,9 +129,12 @@ func Killall() {
 		if len(buf) == 0 {
 			return filepath.SkipDir
 		}
-		unix.Kill(pid, unix.SIGKILL)
+		_ = unix.Kill(pid, unix.SIGKILL)
 		return filepath.SkipDir
 	})
+	if err != nil {
+		log.Print(err)
+	}
 }
 
 // ErrorToRc turns an error value into a Bash like exit code and an error message.

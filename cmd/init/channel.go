@@ -9,8 +9,6 @@ import (
 
 	"github.com/gotoz/runq/pkg/vm"
 
-	"github.com/pkg/errors"
-
 	"golang.org/x/sys/unix"
 )
 
@@ -21,7 +19,7 @@ const headerSize = 4 + 1 // 4 byte payload size + 1 byte message type
 func mkChannel(path string) (chan uint8, <-chan vm.Msg, error) {
 	fd, err := os.OpenFile(path, unix.O_RDWR, 0600|os.ModeExclusive)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "OpenFile %s", path)
+		return nil, nil, err
 	}
 
 	ackChan := make(chan uint8)

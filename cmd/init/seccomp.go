@@ -4,32 +4,36 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"syscall"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
 	libseccomp "github.com/seccomp/libseccomp-golang"
 	"golang.org/x/sys/unix"
 )
 
-func canDoSeccomp() (res bool, err error) {
+func canDoSeccomp() (bool, error) {
 	f, err := os.Open("/proc/self/status")
 	if err != nil {
-		return
+		return false, err
 	}
 	defer f.Close()
 
+	var res bool
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		if strings.HasPrefix(sc.Text(), "Seccomp:") {
 			res = true
+			break
 		}
 	}
-	err = sc.Err()
-	return
+	if err := sc.Err(); err != nil {
+		return false, err
+	}
+	return res, nil
 }
 
 func initSeccomp(seccompGob []byte) error {
@@ -43,13 +47,13 @@ func initSeccomp(seccompGob []byte) error {
 		return err
 	}
 	if !ok {
-		return fmt.Errorf("Kernel does not support seccomp")
+		return errors.New("Kernel does not support seccomp")
 	}
 
 	dec := gob.NewDecoder(bytes.NewBuffer(seccompGob))
 	sec := new(specs.LinuxSeccomp)
 	if err := dec.Decode(sec); err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("dec.Decode LinuxSeccomp failed: %w", err)
 	}
 
 	defaultAction, err := convertAction(sec.DefaultAction)
@@ -59,7 +63,7 @@ func initSeccomp(seccompGob []byte) error {
 
 	filter, err := libseccomp.NewFilter(defaultAction)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("libseccomp.NewFilter failed: %w", err)
 	}
 
 	for _, a := range sec.Architectures {
@@ -69,10 +73,10 @@ func initSeccomp(seccompGob []byte) error {
 		}
 		scmpArch, err := libseccomp.GetArchFromString(arch)
 		if err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("libseccomp.GetArchFromString failed: %w", err)
 		}
 		if err := filter.AddArch(scmpArch); err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("filter.AddArch failed: %w", err)
 		}
 	}
 
@@ -83,7 +87,7 @@ func initSeccomp(seccompGob []byte) error {
 	for _, sc := range sec.Syscalls {
 		for _, name := range sc.Names {
 			if name == "" {
-				return errors.New("syscall name is empty")
+				return errors.New("empty syscall name")
 			}
 
 			// Ignore syscall names that can't be resolved.
@@ -111,7 +115,7 @@ func initSeccomp(seccompGob []byte) error {
 
 			if len(sc.Args) == 0 {
 				if err := filter.AddRule(call, action); err != nil {
-					return errors.Wrapf(err, "filter.AddRule failed: syscall=%s", name)
+					return fmt.Errorf("seccomp filter.AddRule failed: syscall=%s : %w", name, err)
 				}
 				continue
 			}
@@ -124,18 +128,18 @@ func initSeccomp(seccompGob []byte) error {
 				}
 				condition, err := libseccomp.MakeCondition(arg.Index, op, arg.Value, arg.ValueTwo)
 				if err != nil {
-					return errors.WithStack(err)
+					return fmt.Errorf("libseccomp.MakeCondition failed: %w", err)
 				}
 				conditions = append(conditions, condition)
 			}
 			if err := filter.AddRuleConditional(call, action, conditions); err != nil {
-				return errors.Wrapf(err, "filter.AddRuleConditional failed: syscall=%s", name)
+				return fmt.Errorf("seccomp filter.AddRuleConditional failed: syscall=%s : %w", name, err)
 			}
 		}
 	}
 
 	if err = filter.Load(); err != nil {
-		return errors.WithMessage(err, "error loading seccomp filter into kernel")
+		return fmt.Errorf("error loading seccomp filter into kernel: %w", err)
 	}
 	return nil
 }

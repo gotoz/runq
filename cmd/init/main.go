@@ -16,8 +16,6 @@ import (
 	"github.com/gotoz/runq/internal/util"
 	"github.com/gotoz/runq/pkg/vm"
 
-	"github.com/pkg/errors"
-
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
@@ -54,7 +52,7 @@ func main() {
 
 func runInit() error {
 	if os.Args[0] != "/init" || len(os.Args) > 1 || os.Getpid() != 1 {
-		fmt.Printf("%s (%s)\n", gitCommit, runtime.Version())
+		log.Printf("%s (%s)\n", gitCommit, runtime.Version())
 		os.Exit(0)
 	}
 
@@ -80,7 +78,7 @@ func runInit() error {
 	// Wait for vmdata.
 	msg := <-msgChan
 	if msg.Type != vm.Vmdata {
-		return errors.New("received invalid first message")
+		return fmt.Errorf("init: received invalid first message, want vm.Vmdata")
 	}
 	ackChan <- 0
 	<-ackChan
@@ -88,12 +86,12 @@ func runInit() error {
 	vmdataGob := msg.Data
 	vmdata, err := vm.DecodeDataGob(vmdataGob)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("init: vm.DecodeDataGob() failed: %w", err)
 	}
 
 	// Ensure runq and init are build from same commit.
 	if gitCommit == "" || vmdata.GitCommit == "" || vmdata.GitCommit != gitCommit {
-		shutdown(1, fmt.Sprintf("binary missmatch proxy:%q init:%q", vmdata.GitCommit, gitCommit))
+		shutdown(1, fmt.Sprintf("init binary missmatch proxy:%q init:%q", vmdata.GitCommit, gitCommit))
 	}
 
 	if vmdata.MachineType == "z13" {
@@ -114,7 +112,7 @@ func runInit() error {
 
 	if !vmdata.Entrypoint.Terminal {
 		if _, err := term.MakeRaw(0); err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("init: term.MakeRaw(0) failed: %w", err)
 		}
 	}
 
@@ -139,7 +137,7 @@ func runInit() error {
 
 	// Remove empty mountpoint.
 	if err := os.RemoveAll("/rootfs" + vm.QemuMountPt); err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("init: remove empty mountpoint failed: %w", err)
 	}
 
 	if err := mountInitStage1(vmdata.Mounts); err != nil {
@@ -151,7 +149,7 @@ func runInit() error {
 	}
 
 	if err := unix.Sethostname([]byte(vmdata.Hostname)); err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	if err := setupNetwork(vmdata.Networks); err != nil {
 		return err
@@ -171,7 +169,7 @@ func runInit() error {
 	go reaper()
 
 	if err := setModprobe(); err != nil {
-		return fmt.Errorf("setModprobe failed: %v", err)
+		return fmt.Errorf("init: setModprobe() failed: %v", err)
 	}
 
 	// Start entrypoint process.
@@ -188,9 +186,10 @@ func runInit() error {
 		vmdata.Vsockd.EntrypointEnv = vmdata.Entrypoint.Env
 		vsockd, err := newVsockd(vmdata.Vsockd, pidEntrypoint)
 		if err != nil {
+			log.Printf("init: newVsockd() failed: %v", err)
 			shutdown(util.ErrorToRc(err))
 		}
-		if err := os.WriteFile(fmt.Sprintf("/proc/%d/oom_score_adj", vsockd.Process.Pid), []byte("-1000"), 0644); err != nil {
+		if err := os.WriteFile(fmt.Sprintf("/proc/%d/oom_score_adj", vsockd.Process.Pid), []byte("-1000"), 0o644); err != nil {
 			shutdown(1, "can't adjust oom score of vsockd")
 		}
 		go wait4Vsockd(vsockd.Process.Pid)
@@ -212,7 +211,7 @@ func runInit() error {
 				log.Printf("send signal %#v to %d: %v", sig, pidEntrypoint, err)
 			}
 		default:
-			return errors.Errorf("received invalid message: %v", msg)
+			return fmt.Errorf("init: received invalid message: %v", msg)
 		}
 	}
 }
@@ -240,14 +239,15 @@ func wait4Vsockd(pid int) {
 // follow Bash exit codes.
 // Running Systemd as Docker entrypoint the exit code must be treated
 // differently. Init terminates by sending SIGINT or SIGHUP to itself.
-//   poweroff, halt -> SIGINT (2)-> no container restart -> exit code 0 (forced)
-//   reboot         -> SIGHUP (1)-> container restart	 -> exit code 1
+//
+//	poweroff, halt -> SIGINT (2)-> no container restart -> exit code 0 (forced)
+//	reboot         -> SIGHUP (1)-> container restart	 -> exit code 1
 func wait4Entrypoint(pid int, systemd bool) {
 	var wstatus unix.WaitStatus
 	_, err := unix.Wait4(pid, &wstatus, 0, nil)
 	switch {
 	case err != nil:
-		shutdown(1, fmt.Sprintf("%+v", errors.WithStack(err)))
+		shutdown(1, err.Error())
 	case wstatus.Exited():
 		shutdown(uint8(wstatus.ExitStatus()), "")
 	case wstatus.Signaled():
@@ -267,7 +267,7 @@ func wait4Entrypoint(pid int, systemd bool) {
 func signalProcess(pid int, sig unix.Signal) error {
 	proc, err := os.FindProcess(pid)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("init: signalProcess() os.FindProcess(%d) failed: %w", pid, err)
 	}
 	return proc.Signal(sig)
 }
@@ -283,10 +283,10 @@ func vportDevice() (string, error) {
 		time.Sleep(time.Millisecond * 10)
 	}
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", fmt.Errorf("init vportDevice(): os.ReadDir failed: %w", err)
 	}
 	if len(vports) != 1 {
-		return "", errors.Errorf("Found %d vports. Expected 1", len(vports))
+		return "", fmt.Errorf("init vportDevice(): found %d vports. Expected 1", len(vports))
 	}
 	return "/dev/" + vports[0].Name(), nil
 }
@@ -306,12 +306,12 @@ func loadKernelModules(kind, prefix string) error {
 		}
 		fields := strings.Fields(line)
 		if len(fields) < 2 {
-			return fmt.Errorf("invalid kernel config: %q", line)
+			return fmt.Errorf("init loadKernelModules() invalid kernel config: %q", line)
 		}
 		if fields[0] != kind {
 			continue
 		}
-		f, err := os.Open(filepath.Join(prefix + fields[1]))
+		f, err := os.Open(filepath.Join(prefix, fields[1]))
 		if err != nil {
 			return err
 		}
@@ -319,11 +319,14 @@ func loadKernelModules(kind, prefix string) error {
 		params := strings.Join(fields[2:], " ")
 		if err := unix.FinitModule(int(f.Fd()), params, 0); err != nil {
 			if !os.IsExist(err) {
-				return fmt.Errorf("load kernel module %q failed: %v", fields[1], err)
+				return fmt.Errorf("init loadKernelModule(%q) failed: %v", fields[1], err)
 			}
 		}
 	}
-	return errors.WithStack(scanner.Err())
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("init loadKernelModules() %w", err)
+	}
+	return nil
 }
 
 func setSysctl(vmdataSysctl map[string]string) error {
@@ -359,7 +362,7 @@ func setupAPDevice() error {
 	}
 
 	if err := os.Chmod("/dev/z90crypt", 0666); err != nil {
-		return fmt.Errorf("can't chmod /dev/z90crypt: %v", err)
+		return fmt.Errorf("init: chmod /dev/z90crypt failed: %v", err)
 	}
 
 	return nil
@@ -400,13 +403,15 @@ func shutdown(rc uint8, msg string) {
 		case <-time.After(time.Second * 10):
 			log.Print("Warning: cleanup timed out")
 		}
-		unix.Reboot(unix.LINUX_REBOOT_CMD_RESTART)
+		_ = unix.Reboot(unix.LINUX_REBOOT_CMD_RESTART)
 	})
 }
 
 func setModprobe() error {
 	path := "/sbin/modprobe"
-	os.Mkdir("/sbin", 0755)
+	if err := os.MkdirAll("/sbin", 0755); err != nil {
+		return err
+	}
 	if err := util.CreateSymlink("/init", path); err != nil {
 		return err
 	}

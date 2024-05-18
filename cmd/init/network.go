@@ -7,18 +7,17 @@ import (
 
 	"github.com/gotoz/runq/pkg/vm"
 
-	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 )
 
 func setupNetwork(networks []vm.Network) error {
 	links, err := netlink.LinkList()
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("netlink.LinkList failed: %w", err)
 	}
 
 	if len(networks) != len(links)-1 {
-		return errors.New("mismatch vmdata <-> links")
+		return fmt.Errorf("mismatch vmdata <-> links")
 	}
 
 	// There is no guarantee that the order of the VM eth interfaces
@@ -32,7 +31,7 @@ func setupNetwork(networks []vm.Network) error {
 			}
 			name := fmt.Sprintf("tmp-%02d", i)
 			if err := netlink.LinkSetName(link, name); err != nil {
-				return errors.WithStack(err)
+				return fmt.Errorf("netlink.LinkSetName failed, name:%s : %w", name, err)
 			}
 		}
 	}
@@ -43,7 +42,7 @@ func setupNetwork(networks []vm.Network) error {
 
 		if attr.Name == "lo" {
 			if err = netlink.LinkSetUp(link); err != nil {
-				return errors.WithStack(err)
+				return fmt.Errorf("netlink.LinkSetUp failed, link:%s : %w", attr.Name, err)
 			}
 			continue
 		}
@@ -56,13 +55,13 @@ func setupNetwork(networks []vm.Network) error {
 			}
 		}
 		if nw.Name == "" {
-			return errors.Errorf("no vm data for %s", attr.Name)
+			return fmt.Errorf("no vm data for link %s", attr.Name)
 		}
 
 		// Rename links back to ethX names.
 		if len(networks) > 1 {
 			if err = netlink.LinkSetName(link, nw.Name); err != nil {
-				return errors.Wrapf(err, "LinkSetName %s", nw.Name)
+				return fmt.Errorf("netlink LinkSetName %s failed: %w", nw.Name, err)
 			}
 		}
 
@@ -72,18 +71,18 @@ func setupNetwork(networks []vm.Network) error {
 			addr.Label = ""
 			err = netlink.AddrAdd(link, &addr)
 			if err != nil {
-				return errors.WithStack(err)
+				return fmt.Errorf("netlink.AddrAdd failed, link:%v addr:%v : %w", attr.Name, addr, err)
 			}
 		}
 
 		err = netlink.LinkSetMTU(link, nw.MTU)
 		if err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("netlink.LinkSetMTU failed, link:%s : %w", attr.Name, err)
 		}
 
 		err = netlink.LinkSetUp(link)
 		if err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("netlink.LinkSetUp failed, link:%s : %w", attr.Name, err)
 		}
 
 		// Add default gateway.
@@ -93,10 +92,10 @@ func setupNetwork(networks []vm.Network) error {
 				Src: nil,
 				Gw:  nw.Gateway,
 			}
-			err = netlink.RouteAdd(&route)
-			if err != nil {
-				return errors.WithStack(err)
+			if err := netlink.RouteAdd(&route); err != nil {
+				return fmt.Errorf("netlink.RouteAdd failed, route:%v : %w", route, err)
 			}
+
 			// Send an arp request to trigger bridge setup.
 			if conn, err := net.Dial("udp", nw.Gateway.String()+":0"); err != nil {
 				log.Println(err)

@@ -12,7 +12,6 @@ import (
 	"github.com/gotoz/runq/pkg/vm"
 	"golang.org/x/sys/unix"
 
-	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 )
 
@@ -22,7 +21,7 @@ func setupNetwork() ([]vm.Network, error) {
 
 	links, err := netlink.LinkList()
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("netlink.LinkList() failed: %w", err)
 	}
 
 	for _, link := range links {
@@ -36,16 +35,16 @@ func setupNetwork() ([]vm.Network, error) {
 
 		addrs, err := netlink.AddrList(link, netlink.FAMILY_ALL)
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, fmt.Errorf("netlink.AddrList() failed: %w", err)
 		}
 		if len(addrs) == 0 {
-			return nil, errors.Errorf("no ip found on %s", linkAttrs.Name)
+			return nil, fmt.Errorf("no ip found on %s", linkAttrs.Name)
 		}
 
 		var gateway net.IP
 		routes, err := netlink.RouteList(link, netlink.FAMILY_V4)
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, fmt.Errorf("netlink.RouteList() failed: %w", err)
 		}
 		for _, route := range routes {
 			if route.Gw != nil {
@@ -58,12 +57,12 @@ func setupNetwork() ([]vm.Network, error) {
 			a := a
 			err = netlink.AddrDel(link, &a)
 			if err != nil {
-				return nil, errors.WithStack(err)
+				return nil, fmt.Errorf("netlink.AddrDel() failed: %w", err)
 			}
 		}
 
 		if err = netlink.LinkSetDown(link); err != nil {
-			return nil, errors.WithStack(err)
+			return nil, fmt.Errorf("netlink.LinkSetDown() failed: %w", err)
 		}
 
 		// create macvtap interface
@@ -78,21 +77,21 @@ func setupNetwork() ([]vm.Network, error) {
 		}
 
 		if err := netlink.LinkAdd(mvt); err != nil {
-			return nil, errors.Wrap(err, "failed to add macvtap interface")
+			return nil, fmt.Errorf("netlink.LinkAdd macvtap interface failed: %w", err)
 		}
 
 		macvtap, err := netlink.LinkByName(mvtAttrs.Name)
 		if err != nil {
-			return nil, errors.Wrapf(err, "LinkByName %s", mvtAttrs.Name)
+			return nil, fmt.Errorf("netlink.LinkByName failed, name:%s : %w", mvtAttrs.Name, err)
 		}
 		mvtAttrs = *macvtap.Attrs()
 
 		if err := netlink.LinkSetUp(macvtap); err != nil {
-			return nil, errors.Wrapf(err, "LinkSetUp %s:", mvtAttrs.Name)
+			return nil, fmt.Errorf("netlink.LinkSetUp macvtap interface failed, name:%s : %w", mvtAttrs.Name, err)
 		}
 
 		if err := netlink.LinkSetUp(link); err != nil {
-			return nil, errors.Wrapf(err, "LinkSetUp %s", linkAttrs.Name)
+			return nil, fmt.Errorf("netlink.LinkSetUp  interface failed, name:%s : %w", linkAttrs.Name, err)
 		}
 
 		tapDevice, err := createTapDevice(mvtAttrs.Name, mvtAttrs.Index)

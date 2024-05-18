@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -23,13 +22,11 @@ import (
 	"github.com/gotoz/runq/internal/util"
 	"github.com/gotoz/runq/internal/vs"
 	"github.com/gotoz/runq/pkg/vm"
-	"github.com/pkg/errors"
 )
 
 var gitCommit string // set via Makefile
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
 	log.SetPrefix(fmt.Sprintf("[%s %s] ", filepath.Base(os.Args[0]), gitCommit))
 	log.SetFlags(0)
 }
@@ -64,7 +61,7 @@ func main() {
 func run(vmdataB64 string) (int, error) {
 	vmdata, err := vm.ZipDecodeBase64(vmdataB64)
 	if err != nil {
-		return 1, errors.WithStack(err)
+		return 1, err
 	}
 
 	// Ensure runq and proxy are built from same commit.
@@ -78,12 +75,12 @@ func run(vmdataB64 string) (int, error) {
 
 	for _, d := range []string{"/dev", "/proc", "/sys"} {
 		if err = unix.Mount(d, vm.QemuMountPt+d, "none", unix.MS_MOVE, ""); err != nil {
-			return 1, errors.WithStack(err)
+			return 1, fmt.Errorf("mount %s failed: %w", d, err)
 		}
 	}
 
 	if err = unix.PivotRoot(vm.QemuMountPt, vm.QemuMountPt+"/rootfs"); err != nil {
-		return 1, errors.WithStack(err)
+		return 1, fmt.Errorf("PivotRoot() failed: %w", err)
 	}
 
 	// At this point the container files are in /rootfs.
@@ -136,7 +133,7 @@ func run(vmdataB64 string) (int, error) {
 	for _, nw := range vmdata.Networks {
 		f, err := os.OpenFile(nw.TapDevice, os.O_RDWR, 0600|os.ModeExclusive)
 		if err != nil {
-			return 1, errors.WithStack(err)
+			return 1, fmt.Errorf("open tap device %s failed: %w", nw.TapDevice, err)
 		}
 		extraFiles = append(extraFiles, f)
 	}
@@ -152,7 +149,7 @@ func run(vmdataB64 string) (int, error) {
 	cmd.ExtraFiles = extraFiles
 
 	if err = cmd.Start(); err != nil {
-		return 1, errors.WithStack(err)
+		return 1, fmt.Errorf("cmd.Start() failed: %w", err)
 	}
 
 	// doneChan receives the cmd exit code.
@@ -164,7 +161,7 @@ func run(vmdataB64 string) (int, error) {
 	// send Vmdata message to init.
 	data, err := vm.Encode(vmdata)
 	if err != nil {
-		return 1, errors.WithStack(err)
+		return 1, fmt.Errorf("vm.Encode() failed: %w", err)
 	}
 	msgChan <- vm.Msg{
 		Type: vm.Vmdata,
@@ -204,7 +201,7 @@ func run(vmdataB64 string) (int, error) {
 
 	// Disalow foreign processes.
 	if err = unix.Mount("/", "/", "none", unix.MS_REMOUNT|unix.MS_NOEXEC, ""); err != nil {
-		return 1, errors.WithStack(err)
+		return 1, fmt.Errorf("remount / failed: %w", err)
 	}
 
 	// Wait for VM to finish.
@@ -386,11 +383,13 @@ func bindMountKernelModules(dest string) error {
 	}
 	if !util.DirExists(dest) {
 		if err := os.MkdirAll(dest, 0755); err != nil {
-			return errors.WithStack(err)
+			return fmt.Errorf("bindMountKernelModules mkdir(%s) failed: %w", dest, err)
 		}
 	}
-	err := unix.Mount(src, dest, "bind", syscall.MS_BIND|syscall.MS_RDONLY, "")
-	return errors.WithStack(err)
+	if err := unix.Mount(src, dest, "bind", syscall.MS_BIND|syscall.MS_RDONLY, ""); err != nil {
+		return fmt.Errorf("bindMountKernelModules mount(%s) failed: %w", dest, err)
+	}
+	return nil
 }
 
 func getQemuVersion(vmdata *vm.Data) error {

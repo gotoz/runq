@@ -11,8 +11,6 @@ import (
 	"github.com/gotoz/runq/internal/util"
 	"github.com/gotoz/runq/pkg/vm"
 
-	"github.com/pkg/errors"
-
 	"golang.org/x/sys/unix"
 )
 
@@ -130,7 +128,7 @@ func mountEntrypointCgroups() error {
 
 	file, err := os.Open("/proc/cgroups")
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("mountEntrypointCgroups: %v", err)
 	}
 	defer file.Close()
 
@@ -178,7 +176,7 @@ func mountEntrypointCgroups() error {
 	}
 
 	if err := sc.Err(); err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("mountEntrypointCgroups: %v", err)
 	}
 	if err := mount(mounts...); err != nil {
 		return err
@@ -189,7 +187,7 @@ func mountEntrypointCgroups() error {
 func mount(mounts ...vm.Mount) error {
 	for _, m := range mounts {
 		if util.FileExists(m.Target) {
-			return errors.Errorf("invalid path: %v", m.Target)
+			return fmt.Errorf("mount: invalid path: %v", m.Target)
 		}
 		if !util.DirExists(m.Target) {
 			if err := os.MkdirAll(m.Target, 0755); err != nil {
@@ -197,20 +195,8 @@ func mount(mounts ...vm.Mount) error {
 			}
 		}
 		if err := unix.Mount(m.Source, m.Target, m.Fstype, uintptr(m.Flags), m.Data); err != nil {
-			return fmt.Errorf("Mount failed: src:%s dst:%s fs:%s id:%s reason: %v", m.Source, m.Target, m.Fstype, m.ID, err)
+			return fmt.Errorf("mount failed: src:%s dst:%s fs:%s id:%s reason: %v", m.Source, m.Target, m.Fstype, m.ID, err)
 		}
-	}
-	return nil
-}
-
-func bindMountDir(src, target string) error {
-	if !util.DirExists(target) {
-		if err := os.MkdirAll(target, 0755); err != nil {
-			return errors.Errorf("os.MkdirAll failed: %v", err)
-		}
-	}
-	if err := unix.Mount(src, target, "", unix.MS_BIND|unix.MS_RDONLY, ""); err != nil {
-		return fmt.Errorf("bindMountDir failed: src:%s dst:%s reason: %v", src, target, err)
 	}
 	return nil
 }
@@ -219,16 +205,16 @@ func bindMountFile(src, target string) error {
 	dir := filepath.Dir(target)
 	if !util.DirExists(dir) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			return errors.Errorf("os.MkdirAll failed: %v", err)
+			return fmt.Errorf("bindMountFile os.MkdirAll() failed: %v", err)
 		}
 	}
 	if !util.FileExists(target) {
 		if _, err := os.Create(target); err != nil {
-			return errors.Errorf("os.Create failed: %v", err)
+			return fmt.Errorf("bindMountFile os.Create() failed: %v", err)
 		}
 	}
 	if err := unix.Mount(src, target, "", unix.MS_BIND|unix.MS_RDONLY, ""); err != nil {
-		return fmt.Errorf("bindMountFile failed: src:%s dst:%s reason: %v", src, target, err)
+		return fmt.Errorf("bindMountFile Mount() failed: src:%s dst:%s reason: %v", src, target, err)
 	}
 	return nil
 }

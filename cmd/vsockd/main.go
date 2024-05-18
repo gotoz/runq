@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -21,7 +22,6 @@ import (
 	"github.com/gotoz/runq/internal/vs"
 	"github.com/gotoz/runq/pkg/vm"
 	"github.com/mdlayher/vsock"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -72,15 +72,15 @@ func run() error {
 
 	buf, err := io.ReadAll(rd)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	if err := rd.Close(); err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	vsockd, err := vm.DecodeVsockdGob(buf)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("vm.DecodeVsockdGob failed: %w", err)
 	}
 
 	entrypointEnv = vsockd.EntrypointEnv
@@ -96,7 +96,7 @@ func run() error {
 
 	cert, err := tls.X509KeyPair(vsockd.Cert, vsockd.Key)
 	if err != nil {
-		return errors.WithMessage(err, "failed to parse certificate/key pair")
+		return fmt.Errorf("failed to parse certificate/key pair: %w", err)
 	}
 
 	config := &tls.Config{

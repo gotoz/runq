@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/gotoz/runq/pkg/vm"
-	"github.com/pkg/errors"
 	"github.com/syndtr/gocapability/capability"
 )
 
@@ -26,7 +25,7 @@ func dropCapabilities(vmcaps vm.AppCapabilities) error {
 		for _, v := range list {
 			c, ok := capMap[v]
 			if !ok {
-				return nil, errors.Errorf("unknown capability %q", v)
+				return nil, fmt.Errorf("unknown capability %q", v)
 			}
 			caps = append(caps, c)
 		}
@@ -37,11 +36,11 @@ func dropCapabilities(vmcaps vm.AppCapabilities) error {
 
 	p, err := capability.NewPid2(0)
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("capability.NewPid2(0) failed: %w", err)
 	}
 	err = p.Load()
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("capabilies.Load() failed: %w", err)
 	}
 
 	p.Clear(capability.CAPS | capability.BOUNDS)
@@ -59,6 +58,8 @@ func dropCapabilities(vmcaps vm.AppCapabilities) error {
 		p.Set(capType, caps...)
 	}
 
-	err = p.Apply(capability.CAPS | capability.BOUNDS)
-	return errors.WithStack(err)
+	if err := p.Apply(capability.CAPS | capability.BOUNDS); err != nil {
+		return fmt.Errorf("capabilies.Apply() failed: %w", err)
+	}
+	return nil
 }

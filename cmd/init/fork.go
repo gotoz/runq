@@ -1,13 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
 
 	"github.com/gotoz/runq/pkg/vm"
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -15,7 +15,7 @@ func newEntrypoint(entrypoint vm.Entrypoint) (*exec.Cmd, error) {
 	runtime.LockOSThread()
 	dataReader, dataWriter, err := os.Pipe()
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("os.Pipe() failed: %w", err)
 	}
 
 	cmd := &exec.Cmd{
@@ -37,18 +37,18 @@ func newEntrypoint(entrypoint vm.Entrypoint) (*exec.Cmd, error) {
 	}
 
 	if err := dataReader.Close(); err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("dataReader.Close() failed: %w", err)
 	}
 
 	gob, err := vm.Encode(entrypoint)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("vm.Encode() failed: %w", err)
 	}
 	if _, err := dataWriter.Write(gob); err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("dataWriter.Write() failed: %w", err)
 	}
 	if err := dataWriter.Close(); err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("dataWriter.Close() failed: %w", err)
 	}
 	return cmd, nil
 }
@@ -56,7 +56,7 @@ func newEntrypoint(entrypoint vm.Entrypoint) (*exec.Cmd, error) {
 func newVsockd(vsockd vm.Vsockd, nspid int) (*exec.Cmd, error) {
 	dataReader, dataWriter, err := os.Pipe()
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("os.Pipe() failed: %w", err)
 	}
 
 	cmd := &exec.Cmd{
@@ -75,18 +75,18 @@ func newVsockd(vsockd vm.Vsockd, nspid int) (*exec.Cmd, error) {
 		return nil, err
 	}
 	if err := dataReader.Close(); err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("dataReader.Close() failed: %w", err)
 	}
 
 	gob, err := vm.Encode(vsockd)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("newVsockd vm.Encode() failed: %w", err)
 	}
 	if _, err := dataWriter.Write(gob); err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("newVsockd dataWriter.Write() failed: %w", err)
 	}
 	if err := dataWriter.Close(); err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("newVsockd dataWriter.Close() failed: %w", err)
 	}
 	return cmd, nil
 }

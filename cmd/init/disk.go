@@ -9,8 +9,6 @@ import (
 	"github.com/gotoz/runq/internal/util"
 	"github.com/gotoz/runq/pkg/vm"
 	"golang.org/x/sys/unix"
-
-	"github.com/pkg/errors"
 )
 
 func setupDisks(disks []vm.Disk) error {
@@ -20,7 +18,7 @@ func setupDisks(disks []vm.Disk) error {
 			return err
 		}
 		if dev == "" {
-			return errors.New("disk not found: " + disk.Dir)
+			return fmt.Errorf("disk %q not found", disk.Dir)
 		}
 		if err := createDiskSymlink(dev, disk.ID); err != nil {
 			return err
@@ -64,7 +62,7 @@ func setupRootdisk(vmdata *vm.Data) error {
 		return err
 	}
 	if dev == "" {
-		return errors.New("rootdisk not found")
+		return fmt.Errorf("rootdisk device not found")
 	}
 
 	if err := createDiskSymlink(dev, disk.ID); err != nil {
@@ -88,7 +86,7 @@ func setupRootdisk(vmdata *vm.Data) error {
 func findDisk(serial string) (string, error) {
 	files, err := os.ReadDir("/sys/block")
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", fmt.Errorf("os.ReadDir failed: %w", err)
 	}
 
 	for _, f := range files {
@@ -103,7 +101,7 @@ func findDisk(serial string) (string, error) {
 		path := filepath.Join("/sys/block", f.Name(), "serial")
 		buf, err := os.ReadFile(path)
 		if err != nil {
-			return "", errors.WithStack(err)
+			return "", fmt.Errorf("os.ReadFile failed: %w", err)
 		}
 
 		if serial == strings.TrimSpace(string(buf)) {
@@ -116,7 +114,7 @@ func findDisk(serial string) (string, error) {
 func createDiskSymlink(dev, name string) error {
 	wd, err := os.Getwd()
 	if err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("os.Getwd failed: %w", err)
 	}
 	defer os.Chdir(wd)
 
@@ -127,7 +125,7 @@ func createDiskSymlink(dev, name string) error {
 		}
 	}
 	if err := os.Chdir(dir); err != nil {
-		return errors.WithStack(err)
+		return fmt.Errorf("os.Chdir(%s) failed: %w", dir, err)
 	}
 	if err := os.Symlink("../../"+dev, name); err != nil {
 		return fmt.Errorf("can't create symlink: %v", err)

@@ -68,6 +68,7 @@ func setupNetwork(networks []vm.Network) error {
 
 		// Add IP addresses.
 		for _, addr := range nw.Addrs {
+			addr := addr
 			addr.Label = ""
 			err = netlink.AddrAdd(link, &addr)
 			if err != nil {

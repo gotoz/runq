@@ -55,6 +55,7 @@ func setupNetwork() ([]vm.Network, error) {
 		}
 
 		for _, a := range addrs {
+			a := a
 			err = netlink.AddrDel(link, &a)
 			if err != nil {
 				return nil, errors.WithStack(err)

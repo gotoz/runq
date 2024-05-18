@@ -34,6 +34,7 @@ RUN set -eu; \
     rm -f go.tar.gz
 
 RUN mkdir -p \
+    $QEMU_ROOT/etc \
     $QEMU_ROOT/dev \
     $QEMU_ROOT/proc \
     $QEMU_ROOT/rootfs \
@@ -68,7 +69,6 @@ RUN cp -d --preserve=all --parents \
   $QEMU_ROOT/ 2>&1 | grep -v 'omitting directory';:
 
  RUN cp -a --parents \
-     /etc/mtab \
      /usr/bin/qemu-system-x86_64 \
      /usr/bin/rsync \
      /usr/lib64/ld-linux-x86-64.so.2 \
@@ -87,6 +87,7 @@ RUN cp -d --preserve=all --parents \
      $QEMU_ROOT/
 
 RUN cd $QEMU_ROOT \
+    && ln -s /proc/mounts etc/mtab \
     && ln -s usr/bin bin \
     && ln -s usr/lib64 lib64 \
     && ln -s usr/lib lib \

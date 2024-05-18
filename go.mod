@@ -1,6 +1,6 @@
 module github.com/gotoz/runq
 
-go 1.21
+go 1.21.10
 
 replace github.com/gotoz/runq/pkg/vm => ./pkg/vm
 

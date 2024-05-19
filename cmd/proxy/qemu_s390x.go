@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/gotoz/runq/internal/cfg"
 	"github.com/gotoz/runq/pkg/vm"
@@ -12,11 +11,6 @@ import (
 
 func qemuArgs(vmdata *vm.Data, socket, share string) ([]string, error) {
 	shareName := filepath.Base(share)
-
-	var shareArgs string
-	if strings.HasPrefix(vmdata.QemuVersion, "4") {
-		shareArgs = ",multidevs=remap"
-	}
 
 	args := []string{
 		"/usr/bin/qemu-system-s390x",
@@ -36,10 +30,10 @@ func qemuArgs(vmdata *vm.Data, socket, share string) ([]string, error) {
 		"-kernel", "/kernel",
 		"-initrd", "/initrd",
 		"-msg", "timestamp=on",
-		"-fsdev", "local,id=share,path=" + share + ",security_model=none" + shareArgs,
+		"-fsdev", "local,id=share,path=" + share + ",security_model=none,multidevs=remap",
 		"-chardev", "socket,path=" + socket + ",id=channel1",
 		"-device", "virtserialport,chardev=channel1,name=com.ibm.runq.channel.1",
-		"-smp", strconv.Itoa(vmdata.CPU),
+		"-smp", fmt.Sprintf("%d,sockets=%d,cores=1,threads=1", vmdata.CPU, vmdata.CPU),
 		"-m", strconv.Itoa(vmdata.Mem),
 		"-append", cfg.KernelParameters,
 		"-chardev", "stdio,id=console,signal=off",

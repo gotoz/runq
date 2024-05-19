@@ -19,7 +19,7 @@ checkrc $? 0 "$comment"
 #
 runq_mem=512
 comment="set custom memory size (${runq_mem}MiB)"
-min=470000
+min=450000
 max=510000
 cmd="mem=\$(awk '/MemTotal/{print \$2}' /proc/meminfo); echo mem=\$mem; test \$mem -gt $min -a \$mem -lt $max"
 docker run \

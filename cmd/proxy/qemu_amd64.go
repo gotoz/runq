@@ -41,7 +41,7 @@ func qemuArgs(vmdata *vm.Data, socket, share string) ([]string, error) {
 		"-fsdev", "local,id=share,path=" + share + ",security_model=none,multidevs=remap",
 		"-chardev", "socket,path=" + socket + ",id=channel1",
 		"-device", "virtserialport,chardev=channel1,name=com.ibm.runq.channel.1",
-		"-smp", strconv.Itoa(vmdata.CPU),
+		"-smp", fmt.Sprintf("%d,sockets=%d,cores=1,threads=1", vmdata.CPU, vmdata.CPU),
 		"-m", strconv.Itoa(vmdata.Mem),
 		"-append", cfg.KernelParameters,
 		"-chardev", "stdio,id=console,signal=off",

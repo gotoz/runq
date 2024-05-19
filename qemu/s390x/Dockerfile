@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ENV RUNC_ROOT /runq/runc
 ENV RUNQ_ROOT /var/lib/runq
@@ -42,7 +42,9 @@ RUN mkdir -p \
     $QEMU_ROOT/share \
     $QEMU_ROOT/sys
 
-RUN    echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                               >  $QEMU_ROOT/kernel.conf \
+
+RUN    echo base   /lib/modules/*/kernel/fs/netfs/netfs.ko                                   >  $QEMU_ROOT/kernel.conf \
+    && echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                               >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/net/9p/9pnet.ko                                     >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/fs/9p/9p.ko                                         >> $QEMU_ROOT/kernel.conf \
     && echo base   /lib/modules/*/kernel/net/9p/9pnet_virtio.ko                              >> $QEMU_ROOT/kernel.conf \
@@ -56,7 +58,6 @@ RUN    echo base   /lib/modules/*/kernel/fs/fscache/fscache.ko                  
     && echo btrfs  /lib/modules/*/kernel/arch/s390/crypto/crc32-vx_s390.ko                   >> $QEMU_ROOT/kernel.conf \
     && echo btrfs  /lib/modules/*/kernel/lib/libcrc32c.ko                                    >> $QEMU_ROOT/kernel.conf \
     && echo btrfs  /lib/modules/*/kernel/lib/raid6/raid6_pq.ko                               >> $QEMU_ROOT/kernel.conf \
-    && echo btrfs  /lib/modules/*/kernel/lib/zlib_deflate/zlib_deflate.ko                    >> $QEMU_ROOT/kernel.conf \
     && echo btrfs  /lib/modules/*/kernel/lib/zstd/zstd_compress.ko                           >> $QEMU_ROOT/kernel.conf \
     && echo btrfs  /lib/modules/*/kernel/crypto/xor.ko                                       >> $QEMU_ROOT/kernel.conf \
     && echo btrfs  /lib/modules/*/kernel/fs/btrfs/btrfs.ko                                   >> $QEMU_ROOT/kernel.conf \
@@ -80,7 +81,6 @@ RUN cp -d --preserve=all --parents \
      /usr/bin/rsync \
      /usr/lib/ld64.so.1 \
      /usr/lib/modules \
-     /usr/lib/s390x-linux-gnu/ceph \
      /usr/lib/s390x-linux-gnu/qemu \
      /usr/sbin/e2fsck \
      /usr/sbin/fsck.ext2 \

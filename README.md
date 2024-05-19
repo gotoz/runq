@@ -2,14 +2,11 @@
 
 runq is a hypervisor-based Docker runtime based on [runc](https://github.com/opencontainers/runc)
 to run regular Docker images as a lightweight KVM/Qemu virtual machine.
-The focus is on solving real problems, not on number of features.
-
-Key differences to other hypervisor-based runtimes:
 
 * minimalistic design, small code base
 * no modification to existing Docker tools (dockerd, containerd, runc...)
 * coexistence of runq containers and regular runc containers
-* no extra state outside of Docker (no libvirt, no changes to /var/run/...)
+* no extra state outside of Docker (no libvirt)
 * small init program, no systemd
 * no custom guest kernel or custom qemu needed
 * runs on x86_64 and s390x (>= z13)
@@ -38,7 +35,7 @@ Key differences to other hypervisor-based runtimes:
 
 ## Installation
 
-runq requires a host kernel >= 4.8 with KVM and VHOST_VSOCK support enabled.
+Ubuntu 22.04 LTS is used as the KVM guest operating system. It's also recommended as the host operating system.
 The easiest way to build runq and to put all dependencies together is using Docker.
 For fast development cycles a regular build environment might be more
 efficient. For this refer to section [Developing runq](#developing-runq).
@@ -58,7 +55,6 @@ make release-install
 Register runq as Docker runtime with appropriate defaults. See [daemon.json](test/testdata/daemon.json) for more options.
 
 ```json
-/etc/docker/daemon.json
 {
   "runtimes": {
     "runq": {
@@ -314,7 +310,7 @@ Example:
 
 runq runs Qemu and Linux Kernel from the `/var/lib/runq/qemu` directory
 on the host. This directory is populated by `make -C qemu`. For simplicity
-Qemu and the Linux kernel are taken from the Ubuntu 20.04 LTS Docker base image.
+Qemu and the Linux kernel are taken from the Ubuntu 22.04 LTS Docker base image.
 See [qemu/x86_64/Dockerfile](qemu/x86_64/Dockerfile) for details.
 This makes runq independent of the Linux distribution on the host.
 Qemu does not need to be installed on the host.
@@ -529,12 +525,11 @@ However to try out runq in a VM guest the (experimental) runq runtime configurat
 For fast development cycles runq can be build on the host as follows:
 
 1. Prerequisites:
-
-    * Docker >= 19.03.x-ce
-    * Go >= 1.20
+    * host OS Ubuntu 22.04
+    * build-essential git libseccomp-dev qemu-utils pkg-config docker.io
+    * Go = 1.21
+    * modprobe vhost_vsock
     * `/var/lib/runq` must be writable by the current user
-    * [Libseccomp](https://github.com/seccomp/libseccomp/) static library.
-    E.g. `libseccomp-dev` for Ubuntu or `libseccomp-static` for Fedora
 
 1. Download runq and runc source code
 
@@ -543,7 +538,7 @@ For fast development cycles runq can be build on the host as follows:
     ```
 
 1. Install Qemu and guest kernel to `/var/lib/runq/qemu`.
-   All files are taken from the Ubuntu 20.04 LTS Docker base image. (`/var/lib/runq` must be writeable by the current user.)
+   All files are taken from the Ubuntu 22.04 LTS Docker base image. (`/var/lib/runq` must be writeable by the current user.)
 
     ```sh
     cd runq

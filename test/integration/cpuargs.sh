@@ -32,7 +32,7 @@ checkrc $? 0 "$comment"
 comment="set custom qemu cpu arguments"
 case "$(uname -m)" in
     s390x)
-        cpuargs="z13"
+        cpuargs="max"
         ;;
     x86_64)
         cpuargs="host,rtm=off"

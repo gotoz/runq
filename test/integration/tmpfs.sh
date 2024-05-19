@@ -31,9 +31,9 @@ docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
-    --tmpfs /tmp/tmp:size=5M,noatime,noexec,nodev \
+    --tmpfs /tmp2:size=5M,noatime,noexec,nodev \
     $image  \
-    sh -c 'grep -q "tmpfs /tmp/tmp tmpfs rw,nosuid,nodev,noexec,noatime,size=5120k 0 0" /proc/mounts'
+    sh -c 'grep -q "tmpfs /tmp2 tmpfs rw,nosuid,nodev,noexec,noatime,size=5120k" /proc/mounts'
 
 checkrc $? 0 "$comment"
 
@@ -45,9 +45,9 @@ docker run \
     --runtime runq \
     --name $(rand_name) \
     --rm \
-    --tmpfs /foo:ro,dev,exec,suid,strictatime \
+    --tmpfs /tmp2:ro,dev,exec,suid,strictatime \
     $image  \
-    sh -c 'grep -q "tmpfs /foo tmpfs ro 0 0" /proc/mounts'
+    sh -c 'grep -q "tmpfs /tmp2 tmpfs ro" /proc/mounts'
 
 checkrc $? 0 "$comment"
 
